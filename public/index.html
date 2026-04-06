@@ -527,7 +527,7 @@ function parseCostCSV(csv) {
     const vals = parseCSVLine(line);
     const obj = {};
     headers.forEach((h, i) => obj[h.trim()] = (vals[i] || '').trim());
-    const key = (obj['Data']||'') + '|||' + (obj['Utm Campaign']||'') + '|||' + (obj['Utm Adgroup']||'');
+    const key = (obj['Data']||'') + '|||' + (obj['Campanha']||'') + '|||' + (obj['Grupo / Asset']||'');
     obj._date = obj['Data'] ? new Date(obj['Data'] + 'T00:00:00') : null;
     obj._campaign = obj['Campanha'] || '';
     obj._adGroup = obj['Grupo / Asset'] || '';
