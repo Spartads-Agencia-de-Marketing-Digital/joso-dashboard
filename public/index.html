@@ -390,7 +390,7 @@
       <div style="font-size:12px;color:var(--muted);margin-bottom:14px">Desempenho de cada campanha Google Ads com dados de custo cruzados</div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Campanha</th><th>Nº Reservas</th><th>Valor Reserva (Comissão)</th><th>Custo Total</th><th>ROAS</th><th>Custo / Reserva</th></tr></thead>
+          <thead><tr><th>Campanha</th><th>Nº Reservas</th><th>Comissão</th><th>Custo</th><th>Conversões</th><th>Valor Conv.</th><th>ROAS</th><th>Custo / Reserva</th></tr></thead>
           <tbody id="tableCampaigns"></tbody>
         </table>
       </div>
@@ -400,7 +400,7 @@
       <div style="font-size:12px;color:var(--muted);margin-bottom:14px">Desempenho por ad group — cruzamento entre conjuntos de anúncios e reservas geradas</div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Conjunto de Anúncios</th><th>Campanha</th><th>Nº Reservas</th><th>Valor Reserva (Comissão)</th><th>Custo Total</th><th>ROAS</th><th>Custo / Reserva</th></tr></thead>
+          <thead><tr><th>Conjunto de Anúncios</th><th>Campanha</th><th>Nº Reservas</th><th>Comissão</th><th>Custo</th><th>Conversões</th><th>Valor Conv.</th><th>ROAS</th><th>Custo / Reserva</th></tr></thead>
           <tbody id="tableAdGroups"></tbody>
         </table>
       </div>
@@ -474,7 +474,7 @@ const GID = '718546705';
 const CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${GID}`;
 
 const COST_SHEET_ID = '1TS0y5oLitYrFw5DqibD-Rpbe4cGP5_e8bHLnfHjGDcY';
-const COST_GID = '0';
+const COST_GID = '1916236657';
 const COST_CSV_URL = `https://docs.google.com/spreadsheets/d/${COST_SHEET_ID}/export?format=csv&gid=${COST_GID}`;
 
 const META_COST_SHEET_ID = '1OHvRPO1R34Tv2S2Raq2_4uLZXBbL3lXMgNi5f8S7Idk';
@@ -509,20 +509,33 @@ async function loadData() {
   }
 }
 
+function parseEurNum(str) {
+  if (!str) return 0;
+  return parseFloat(str.replace('€','').replace('%','').replace(/\./g,'').replace(',','.').trim()) || 0;
+}
+
 function parseCostCSV(csv) {
+  // Columns: Data, Campanha, Grupo / Asset, Custo, Conversões, Valor de conversão,
+  //          Custo/Conversão, Taxa de Conversão, CTR, Utm Campaign, Utm Id,
+  //          Utm Adgroup, Utm Term, Utm Device, Utm Matchtype
   const lines = csv.split('\n');
   const headers = parseCSVLine(lines[0]);
   return lines.slice(1).filter(l => l.trim()).map(line => {
     const vals = parseCSVLine(line);
     const obj = {};
     headers.forEach((h, i) => obj[h.trim()] = (vals[i] || '').trim());
-    // parse cost — handles formats like "14,82€" or "14.82"
-    let costStr = obj[headers.find(h => h.trim().toLowerCase().includes('cost'))?.trim()] || obj[headers[3]?.trim()] || '0';
-    costStr = costStr.replace('€','').replace(/\./g,'').replace(',','.').trim();
-    obj._cost = parseFloat(costStr) || 0;
-    obj._campaign = obj[headers[1]?.trim()] || '';
-    obj._adGroup = obj[headers[2]?.trim()] || '';
-    obj._date = obj[headers[0]?.trim()] || '';
+    obj._date = obj['Data'] || '';
+    obj._campaign = obj['Campanha'] || '';
+    obj._adGroup = obj['Grupo / Asset'] || '';
+    obj._cost = parseEurNum(obj['Custo']);
+    obj._conversions = parseEurNum(obj['Conversões']);
+    obj._conversionValue = parseEurNum(obj['Valor de conversão']);
+    obj._costPerConversion = parseEurNum(obj['Custo/Conversão']);
+    obj._conversionRate = parseEurNum(obj['Taxa de Conversão']);
+    obj._ctr = parseEurNum(obj['CTR']);
+    obj._utmCampaign = obj['Utm Campaign'] || '';
+    obj._utmId = obj['Utm Id'] || '';
+    obj._utmAdgroup = obj['Utm Adgroup'] || '';
     return obj;
   });
 }
@@ -836,36 +849,6 @@ function renderGoogleCharts(data) {
 // ─── CAMPAIGNS TAB ──────────────────────────────────────────────
 let _campTabBaseData = [];
 
-// Normalize cost campaign name to utm_campaign slug
-// "BBH | Japan" → "bb-japan", "JO&SO || REGIONS" → "js-regions", etc.
-function costCampToUtm(costName) {
-  let s = costName.trim().toLowerCase();
-  // BBH | ... → bb-...
-  s = s.replace(/^bbh\s*\|\s*/, 'bb-');
-  // JO&SO || ... → js-...
-  s = s.replace(/^jo&so\s*\|\|\s*/, 'js-');
-  // "BBH | London | UK Only" → after first replace: "bb-london | uk only"
-  // Replace remaining separators
-  s = s.replace(/\s*\|\|\s*/g, '-').replace(/\s*\|\s*/g, '-');
-  // Collapse spaces to dashes
-  s = s.replace(/\s+/g, '-');
-  // Remove special characters except dashes
-  s = s.replace(/[^a-z0-9\-]/g, '');
-  // Collapse multiple dashes
-  s = s.replace(/-+/g, '-').replace(/^-|-$/g, '');
-  return s;
-}
-
-// Normalize cost ad group "[Japan]" → "japan"
-function costAdGroupToUtm(costAg) {
-  let s = costAg.trim().toLowerCase();
-  s = s.replace(/^\[/, '').replace(/\]$/, '');
-  s = s.replace(/\s+/g, '-');
-  s = s.replace(/[^a-z0-9\-]/g, '');
-  s = s.replace(/-+/g, '-').replace(/^-|-$/g, '');
-  return s;
-}
-
 function applyCampTabFilter() {
   const camp = document.getElementById('filterCampTab').value;
   const filtered = camp ? _campTabBaseData.filter(r => r._utmCampaign === camp) : _campTabBaseData;
@@ -877,7 +860,6 @@ function applyCampTabFilter() {
 function renderCampaigns(googleData) {
   _campTabBaseData = googleData;
 
-  // Populate campaign filter
   const sel = document.getElementById('filterCampTab');
   const prev = sel.value;
   const campaigns = [...new Set(googleData.map(r => r._utmCampaign).filter(Boolean))].sort();
@@ -894,63 +876,59 @@ function renderCampaigns(googleData) {
 }
 
 function renderCampaignTables(data, selectedCamp) {
-  // Build cost lookup: normalized utm slug → total cost
-  // Also keep cost campaign display name
-  const costByCampUtm = {};    // utm slug → { cost, displayName }
-  const costByAgUtm = {};      // "campUtm|||agUtm" → { cost, displayCamp, displayAg }
+  // Direct match via Utm Campaign column (no normalization needed)
+  const costByCamp = {};   // utmCampaign → { cost, conversions, convValue, displayName }
+  const costByAg = {};     // "utmCamp|||utmAdgroup" → { cost, conversions, convValue, displayCamp, displayAg }
   costData.forEach(c => {
-    if (!c._campaign) return;
-    const campUtm = costCampToUtm(c._campaign);
-    if (!costByCampUtm[campUtm]) costByCampUtm[campUtm] = { cost: 0, displayName: c._campaign };
-    costByCampUtm[campUtm].cost += c._cost;
+    const campUtm = c._utmCampaign;
+    if (!campUtm || campUtm === 'sem-utm') return;
+    if (!costByCamp[campUtm]) costByCamp[campUtm] = { cost: 0, conversions: 0, convValue: 0, displayName: c._campaign };
+    costByCamp[campUtm].cost += c._cost;
+    costByCamp[campUtm].conversions += c._conversions;
+    costByCamp[campUtm].convValue += c._conversionValue;
 
-    const agUtm = costAdGroupToUtm(c._adGroup || '');
+    const agUtm = c._utmAdgroup || '';
     const agKey = campUtm + '|||' + agUtm;
-    if (!costByAgUtm[agKey]) costByAgUtm[agKey] = { cost: 0, displayCamp: c._campaign, displayAg: c._adGroup || '' };
-    costByAgUtm[agKey].cost += c._cost;
+    if (!costByAg[agKey]) costByAg[agKey] = { cost: 0, conversions: 0, convValue: 0, displayCamp: c._campaign, displayAg: c._adGroup || '' };
+    costByAg[agKey].cost += c._cost;
+    costByAg[agKey].conversions += c._conversions;
+    costByAg[agKey].convValue += c._conversionValue;
   });
 
   // Aggregate bookings by utm_campaign
   const bookByCampaign = groupBy(data, '_utmCampaign');
 
-  // Build unified campaign list using utm slugs
-  const allUtmSlugs = new Set([
-    ...Object.keys(costByCampUtm),
-    ...Object.keys(bookByCampaign).map(k => k.toLowerCase())
-  ]);
+  const allSlugs = new Set([...Object.keys(costByCamp), ...Object.keys(bookByCampaign)]);
 
   const campRows = [];
-  let totalBookings = 0, totalCommission = 0, totalCost = 0;
+  let totalBookings = 0, totalCommission = 0, totalCost = 0, totalConv = 0, totalConvVal = 0;
 
-  allUtmSlugs.forEach(slug => {
-    if (!slug || slug === 'desconhecido') return;
+  allSlugs.forEach(slug => {
+    if (!slug || slug === 'Desconhecido') return;
+    if (selectedCamp && slug !== selectedCamp) return;
 
-    // Find booking rows for this slug
-    const bookKey = Object.keys(bookByCampaign).find(k => k.toLowerCase() === slug);
-    const bookRows = bookKey ? bookByCampaign[bookKey] : [];
-    const costEntry = costByCampUtm[slug];
-
-    // If filtering by campaign, check match
-    if (selectedCamp && (!bookKey || bookKey !== selectedCamp)) {
-      if (selectedCamp.toLowerCase() !== slug) return;
-    }
+    const bookRows = bookByCampaign[slug] || [];
+    const costEntry = costByCamp[slug];
 
     const nBookings = bookRows.length;
     const commission = sumArr(bookRows, '_commission');
     const cost = costEntry ? costEntry.cost : 0;
-    const displayName = costEntry ? costEntry.displayName : (bookKey || slug);
+    const conversions = costEntry ? costEntry.conversions : 0;
+    const convValue = costEntry ? costEntry.convValue : 0;
+    const displayName = costEntry ? costEntry.displayName : slug;
     const roas = cost > 0 ? commission / cost : 0;
     const cpr = nBookings > 0 && cost > 0 ? cost / nBookings : 0;
 
-    campRows.push({ name: displayName, utmName: bookKey || slug, nBookings, commission, cost, roas, cpr });
+    campRows.push({ name: displayName, utmName: slug, nBookings, commission, cost, conversions, convValue, roas, cpr });
     totalBookings += nBookings;
     totalCommission += commission;
     totalCost += cost;
+    totalConv += conversions;
+    totalConvVal += convValue;
   });
 
   campRows.sort((a, b) => b.commission - a.commission);
 
-  // KPIs
   const totalROAS = totalCost > 0 ? totalCommission / totalCost : 0;
   const totalCPR = totalBookings > 0 && totalCost > 0 ? totalCost / totalBookings : 0;
 
@@ -960,7 +938,7 @@ function renderCampaignTables(data, selectedCamp) {
     ${kpi('c1','💰','Comissão Total','€ '+fmt(totalCommission),'Receita gerada')}
     ${kpi('c4','💸','Custo Total','€ '+fmt(totalCost),'Investimento Google Ads')}
     ${kpi('c2','📈','ROAS Geral', totalROAS.toFixed(2)+'x','Retorno sobre investimento')}
-    ${kpi('c3','🏷️','Custo / Reserva','€ '+fmt(totalCPR),'Custo médio por reserva')}
+    ${kpi('c5','🔄','Conversões Google', totalConv.toFixed(0),'Valor: € '+fmt(totalConvVal))}
   `;
 
   // Campaign table
@@ -971,6 +949,8 @@ function renderCampaignTables(data, selectedCamp) {
       <td><strong>${r.nBookings}</strong></td>
       <td><strong>€ ${fmt(r.commission)}</strong></td>
       <td>€ ${fmt(r.cost)}</td>
+      <td>${r.conversions.toFixed(1)}</td>
+      <td>€ ${fmt(r.convValue)}</td>
       <td><span style="color:${roasColor};font-weight:700">${r.roas.toFixed(2)}x</span></td>
       <td>${r.nBookings > 0 && r.cost > 0 ? '€ '+fmt(r.cpr) : '—'}</td>
     </tr>`;
@@ -979,40 +959,43 @@ function renderCampaignTables(data, selectedCamp) {
       <td><strong>${totalBookings}</strong></td>
       <td><strong>€ ${fmt(totalCommission)}</strong></td>
       <td><strong>€ ${fmt(totalCost)}</strong></td>
+      <td><strong>${totalConv.toFixed(1)}</strong></td>
+      <td><strong>€ ${fmt(totalConvVal)}</strong></td>
       <td><span style="color:${totalROAS >= 2 ? 'var(--accent2)' : totalROAS >= 1 ? 'var(--accent4)' : 'var(--accent3)'};font-weight:700">${totalROAS.toFixed(2)}x</span></td>
       <td><strong>${totalCPR > 0 ? '€ '+fmt(totalCPR) : '—'}</strong></td>
     </tr>` : '');
 
   // ── Ad Group table ──
-  // Aggregate bookings by utm_campaign + utm_adgroup
-  const bookByAg = {};
+  const bookByAdGroup = {};
   data.forEach(r => {
-    const campSlug = (r._utmCampaign || '').toLowerCase();
-    const agSlug = (r._utmAdgroup || 'desconhecido').toLowerCase();
+    const campSlug = r._utmCampaign || '';
+    const agSlug = r._utmAdgroup || 'desconhecido';
     const key = campSlug + '|||' + agSlug;
-    if (!bookByAg[key]) bookByAg[key] = { campSlug, agSlug, utmCampaign: r._utmCampaign, utmAdgroup: r._utmAdgroup || 'Desconhecido', rows: [] };
-    bookByAg[key].rows.push(r);
+    if (!bookByAdGroup[key]) bookByAdGroup[key] = { campSlug, agSlug, utmCampaign: r._utmCampaign, utmAdgroup: r._utmAdgroup || 'Desconhecido', rows: [] };
+    bookByAdGroup[key].rows.push(r);
   });
 
-  // Also include ad groups from cost data that have no bookings
-  Object.entries(costByAgUtm).forEach(([key, info]) => {
-    if (!bookByAg[key] && info.cost > 0) {
+  // Include ad groups from cost data with no bookings
+  Object.entries(costByAg).forEach(([key, info]) => {
+    if (!bookByAdGroup[key] && info.cost > 0) {
       const [campSlug, agSlug] = key.split('|||');
-      if (selectedCamp && selectedCamp.toLowerCase() !== campSlug) return;
-      bookByAg[key] = { campSlug, agSlug, utmCampaign: info.displayCamp, utmAdgroup: info.displayAg, rows: [] };
+      if (selectedCamp && campSlug !== selectedCamp) return;
+      bookByAdGroup[key] = { campSlug, agSlug, utmCampaign: campSlug, utmAdgroup: agSlug, rows: [] };
     }
   });
 
-  const adGroupRows = Object.entries(bookByAg).map(([key, obj]) => {
+  const adGroupRows = Object.entries(bookByAdGroup).map(([key, obj]) => {
     const nBookings = obj.rows.length;
     const commission = sumArr(obj.rows, '_commission');
-    const costInfo = costByAgUtm[key];
+    const costInfo = costByAg[key];
     const cost = costInfo ? costInfo.cost : 0;
+    const conversions = costInfo ? costInfo.conversions : 0;
+    const convValue = costInfo ? costInfo.convValue : 0;
     const displayAg = costInfo ? costInfo.displayAg : obj.utmAdgroup;
     const displayCamp = costInfo ? costInfo.displayCamp : obj.utmCampaign;
     const roas = cost > 0 ? commission / cost : 0;
     const cpr = nBookings > 0 && cost > 0 ? cost / nBookings : 0;
-    return { adGroup: displayAg, adGroupUtm: obj.agSlug, campaign: displayCamp, nBookings, commission, cost, roas, cpr };
+    return { adGroup: displayAg, adGroupUtm: obj.agSlug, campaign: displayCamp, nBookings, commission, cost, conversions, convValue, roas, cpr };
   }).sort((a, b) => b.commission - a.commission);
 
   document.getElementById('tableAdGroups').innerHTML = adGroupRows.map(r => {
@@ -1023,6 +1006,8 @@ function renderCampaignTables(data, selectedCamp) {
       <td><strong>${r.nBookings}</strong></td>
       <td><strong>€ ${fmt(r.commission)}</strong></td>
       <td>€ ${fmt(r.cost)}</td>
+      <td>${r.conversions.toFixed(1)}</td>
+      <td>€ ${fmt(r.convValue)}</td>
       <td><span style="color:${roasColor};font-weight:700">${r.roas > 0 ? r.roas.toFixed(2)+'x' : '—'}</span></td>
       <td>${r.nBookings > 0 && r.cost > 0 ? '€ '+fmt(r.cpr) : '—'}</td>
     </tr>`;
