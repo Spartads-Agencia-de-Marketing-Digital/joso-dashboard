@@ -521,14 +521,13 @@ function parseCostCSV(csv) {
   //          Utm Adgroup, Utm Term, Utm Device, Utm Matchtype
   const lines = csv.split('\n');
   const headers = parseCSVLine(lines[0]);
-  const seen = new Set();
-  return lines.slice(1).filter(l => l.trim()).map(line => {
-    // Deduplicate: skip exact duplicate rows
-    if (seen.has(line)) return null;
-    seen.add(line);
+  // Deduplicate by Data + Utm Campaign + Utm Adgroup (keep last = most recent snapshot)
+  const dedup = new Map();
+  lines.slice(1).filter(l => l.trim()).forEach(line => {
     const vals = parseCSVLine(line);
     const obj = {};
     headers.forEach((h, i) => obj[h.trim()] = (vals[i] || '').trim());
+    const key = (obj['Data']||'') + '|||' + (obj['Utm Campaign']||'') + '|||' + (obj['Utm Adgroup']||'');
     obj._date = obj['Data'] ? new Date(obj['Data'] + 'T00:00:00') : null;
     obj._campaign = obj['Campanha'] || '';
     obj._adGroup = obj['Grupo / Asset'] || '';
@@ -541,8 +540,9 @@ function parseCostCSV(csv) {
     obj._utmCampaign = obj['Utm Campaign'] || '';
     obj._utmId = obj['Utm Id'] || '';
     obj._utmAdgroup = obj['Utm Adgroup'] || '';
-    return obj;
-  }).filter(Boolean);
+    dedup.set(key, obj);
+  });
+  return [...dedup.values()];
 }
 
 function parseMetaCostCSV(csv) {
