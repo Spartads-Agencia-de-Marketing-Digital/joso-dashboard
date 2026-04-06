@@ -521,7 +521,11 @@ function parseCostCSV(csv) {
   //          Utm Adgroup, Utm Term, Utm Device, Utm Matchtype
   const lines = csv.split('\n');
   const headers = parseCSVLine(lines[0]);
+  const seen = new Set();
   return lines.slice(1).filter(l => l.trim()).map(line => {
+    // Deduplicate: skip exact duplicate rows
+    if (seen.has(line)) return null;
+    seen.add(line);
     const vals = parseCSVLine(line);
     const obj = {};
     headers.forEach((h, i) => obj[h.trim()] = (vals[i] || '').trim());
@@ -538,7 +542,7 @@ function parseCostCSV(csv) {
     obj._utmId = obj['Utm Id'] || '';
     obj._utmAdgroup = obj['Utm Adgroup'] || '';
     return obj;
-  });
+  }).filter(Boolean);
 }
 
 function parseMetaCostCSV(csv) {
