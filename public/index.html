@@ -484,6 +484,7 @@ const META_COST_CSV_URL = `https://docs.google.com/spreadsheets/d/${META_COST_SH
 let allData = [];
 let filteredData = [];
 let costData = [];
+let filteredGoogleCostData = [];
 let allMetaCostData = [];
 let filteredMetaCostData = [];
 let currentPreset = 'all';
@@ -524,7 +525,7 @@ function parseCostCSV(csv) {
     const vals = parseCSVLine(line);
     const obj = {};
     headers.forEach((h, i) => obj[h.trim()] = (vals[i] || '').trim());
-    obj._date = obj['Data'] || '';
+    obj._date = obj['Data'] ? new Date(obj['Data'] + 'T00:00:00') : null;
     obj._campaign = obj['Campanha'] || '';
     obj._adGroup = obj['Grupo / Asset'] || '';
     obj._cost = parseEurNum(obj['Custo']);
@@ -650,6 +651,11 @@ function applyFilters() {
     if (country && row['Country'] !== country) return false;
     if (booker && row['Booker country'] !== booker) return false;
     return true;
+  });
+
+  filteredGoogleCostData = costData.filter(row => {
+    if (!row._date) return false;
+    return _dateFilter(row._date, today);
   });
 
   filteredMetaCostData = allMetaCostData.filter(row => {
@@ -879,7 +885,7 @@ function renderCampaignTables(data, selectedCamp) {
   // Direct match via Utm Campaign column (no normalization needed)
   const costByCamp = {};   // utmCampaign → { cost, conversions, convValue, displayName }
   const costByAg = {};     // "utmCamp|||utmAdgroup" → { cost, conversions, convValue, displayCamp, displayAg }
-  costData.forEach(c => {
+  filteredGoogleCostData.forEach(c => {
     const campUtm = c._utmCampaign;
     if (!campUtm || campUtm === 'sem-utm') return;
     if (!costByCamp[campUtm]) costByCamp[campUtm] = { cost: 0, conversions: 0, convValue: 0, displayName: c._campaign };
