@@ -1,0 +1,1845 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JO&SO — Dashboard de Vendas</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --bg2: #111118;
+    --bg3: #1a1a25;
+    --card: #16161f;
+    --border: rgba(255,255,255,0.07);
+    --accent: #7c5cfc;
+    --accent2: #00d4aa;
+    --accent3: #ff6b6b;
+    --accent4: #ffa94d;
+    --text: #e8e8f0;
+    --muted: #6b6b80;
+    --google: #4285f4;
+    --meta: #0668e1;
+    --radius: 14px;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:'Inter',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; }
+
+  /* HEADER */
+  .header { background:linear-gradient(135deg,#1a1a2e,#16213e,#0f3460); padding:24px 32px; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--border); }
+  .logo { font-size:22px; font-weight:800; letter-spacing:2px; background:linear-gradient(90deg,#7c5cfc,#00d4aa); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+  .header-right { display:flex; align-items:center; gap:12px; }
+  .sync-btn { background:linear-gradient(135deg,var(--accent),#5a3fd8); border:none; color:#fff; padding:10px 20px; border-radius:8px; cursor:pointer; font-size:13px; font-weight:600; display:flex; align-items:center; gap:8px; transition:all .2s; }
+  .sync-btn:hover { transform:translateY(-1px); box-shadow:0 4px 20px rgba(124,92,252,.4); }
+  .last-update { font-size:12px; color:var(--muted); }
+
+  /* FILTERS BAR */
+  .filters-bar { background:var(--bg2); border-bottom:1px solid var(--border); padding:16px 32px; display:flex; flex-wrap:wrap; gap:12px; align-items:center; }
+  .filter-group { display:flex; align-items:center; gap:8px; }
+  .filter-label { font-size:12px; color:var(--muted); font-weight:500; white-space:nowrap; }
+  select, input[type=date] { background:var(--bg3); border:1px solid var(--border); color:var(--text); padding:8px 12px; border-radius:8px; font-size:13px; font-family:'Inter',sans-serif; cursor:pointer; outline:none; transition:border-color .2s; }
+  select:hover, input[type=date]:hover { border-color:var(--accent); }
+  .date-presets { display:flex; gap:4px; flex-wrap:wrap; }
+  .preset-btn { background:var(--bg3); border:1px solid var(--border); color:var(--muted); padding:7px 12px; border-radius:7px; font-size:12px; cursor:pointer; transition:all .2s; white-space:nowrap; }
+  .preset-btn:hover, .preset-btn.active { background:var(--accent); border-color:var(--accent); color:#fff; }
+  .custom-dates { display:flex; align-items:center; gap:6px; }
+
+  /* TABS */
+  .tabs { background:var(--bg2); border-bottom:1px solid var(--border); padding:0 32px; display:flex; gap:4px; }
+  .tab { padding:16px 24px; font-size:13px; font-weight:600; color:var(--muted); cursor:pointer; border-bottom:2px solid transparent; transition:all .2s; white-space:nowrap; }
+  .tab:hover { color:var(--text); }
+  .tab.active { color:var(--accent); border-bottom-color:var(--accent); }
+  .tab-icon { margin-right:6px; }
+
+  /* MAIN */
+  .main { padding:28px 32px; }
+  .tab-content { display:none; }
+  .tab-content.active { display:block; }
+
+  /* KPI CARDS */
+  .kpi-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:16px; margin-bottom:24px; }
+  .kpi-card { background:var(--card); border:1px solid var(--border); border-radius:var(--radius); padding:20px; position:relative; overflow:hidden; transition:transform .2s; }
+  .kpi-card:hover { transform:translateY(-2px); }
+  .kpi-card::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; }
+  .kpi-card.c1::before { background:linear-gradient(90deg,var(--accent),#5a3fd8); }
+  .kpi-card.c2::before { background:linear-gradient(90deg,var(--accent2),#00a884); }
+  .kpi-card.c3::before { background:linear-gradient(90deg,var(--accent3),#ff4500); }
+  .kpi-card.c4::before { background:linear-gradient(90deg,var(--accent4),#ff8c00); }
+  .kpi-card.c5::before { background:linear-gradient(90deg,#a78bfa,var(--accent)); }
+  .kpi-label { font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; font-weight:600; }
+  .kpi-value { font-size:28px; font-weight:800; margin:8px 0 4px; }
+  .kpi-sub { font-size:12px; color:var(--muted); }
+  .kpi-icon { position:absolute; top:18px; right:18px; font-size:22px; opacity:.3; }
+
+  /* CHARTS GRID */
+  .charts-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:24px; }
+  .charts-grid.three { grid-template-columns:1fr 1fr 1fr; }
+  .chart-card { background:var(--card); border:1px solid var(--border); border-radius:var(--radius); padding:20px; }
+  .chart-card.full { grid-column:1/-1; }
+  .chart-title { font-size:14px; font-weight:700; color:var(--text); margin-bottom:4px; }
+  .chart-sub { font-size:12px; color:var(--muted); margin-bottom:16px; }
+  .chart-wrap { position:relative; height:240px; }
+  .chart-wrap.tall { height:300px; }
+
+  /* TABLE */
+  .table-card { background:var(--card); border:1px solid var(--border); border-radius:var(--radius); padding:20px; margin-bottom:16px; }
+  .table-wrap { overflow-x:auto; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  th { text-align:left; padding:10px 14px; color:var(--muted); font-weight:600; font-size:11px; text-transform:uppercase; letter-spacing:.5px; border-bottom:1px solid var(--border); white-space:nowrap; }
+  td { padding:10px 14px; border-bottom:1px solid rgba(255,255,255,0.04); }
+  tr:hover td { background:rgba(124,92,252,.05); }
+  .badge { display:inline-block; padding:3px 10px; border-radius:20px; font-size:11px; font-weight:600; }
+  .badge-green { background:rgba(0,212,170,.15); color:var(--accent2); }
+  .badge-red { background:rgba(255,107,107,.15); color:var(--accent3); }
+  .badge-gray { background:rgba(107,107,128,.15); color:var(--muted); }
+
+  /* LOADING */
+  .loading { text-align:center; padding:60px; color:var(--muted); }
+  .spinner { display:inline-block; width:32px; height:32px; border:3px solid rgba(124,92,252,.2); border-top-color:var(--accent); border-radius:50%; animation:spin 1s linear infinite; margin-bottom:12px; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+
+  /* SECTION TITLE */
+  .section-title { font-size:16px; font-weight:700; margin-bottom:16px; display:flex; align-items:center; gap:8px; }
+  .section-title span { width:3px; height:18px; background:linear-gradient(var(--accent),var(--accent2)); border-radius:2px; display:inline-block; }
+
+  /* SCROLLBAR */
+  ::-webkit-scrollbar { width:5px; height:5px; }
+  ::-webkit-scrollbar-track { background:var(--bg); }
+  ::-webkit-scrollbar-thumb { background:var(--border); border-radius:10px; }
+
+  @media(max-width:768px) {
+    .header { padding:16px; flex-direction:column; gap:12px; }
+    .filters-bar { padding:12px 16px; }
+    .main { padding:16px; }
+    .tabs { padding:0 16px; overflow-x:auto; }
+    .charts-grid { grid-template-columns:1fr; }
+    .charts-grid.three { grid-template-columns:1fr; }
+  }
+
+  /* LOGIN */
+  #loginOverlay { position:fixed; inset:0; z-index:9999; background:linear-gradient(135deg,#0a0a0f,#111118,#0f3460); display:flex; align-items:center; justify-content:center; }
+  .login-box { background:var(--card); border:1px solid var(--border); border-radius:20px; padding:48px 40px; width:100%; max-width:400px; box-shadow:0 24px 80px rgba(0,0,0,.6); }
+  .login-logo { font-size:28px; font-weight:800; letter-spacing:3px; background:linear-gradient(90deg,#7c5cfc,#00d4aa); -webkit-background-clip:text; -webkit-text-fill-color:transparent; text-align:center; margin-bottom:8px; }
+  .login-sub { text-align:center; font-size:13px; color:var(--muted); margin-bottom:36px; }
+  .login-field { margin-bottom:16px; }
+  .login-field label { display:block; font-size:12px; color:var(--muted); font-weight:600; text-transform:uppercase; letter-spacing:.5px; margin-bottom:8px; }
+  .login-field input { width:100%; background:var(--bg3); border:1px solid var(--border); color:var(--text); padding:12px 16px; border-radius:10px; font-size:14px; font-family:'Inter',sans-serif; outline:none; transition:border-color .2s; }
+  .login-field input:focus { border-color:var(--accent); }
+  .login-btn { width:100%; background:linear-gradient(135deg,var(--accent),#5a3fd8); border:none; color:#fff; padding:14px; border-radius:10px; font-size:14px; font-weight:700; cursor:pointer; margin-top:8px; transition:all .2s; letter-spacing:.5px; }
+  .login-btn:hover { transform:translateY(-1px); box-shadow:0 6px 24px rgba(124,92,252,.4); }
+  .login-error { background:rgba(255,107,107,.12); border:1px solid rgba(255,107,107,.3); color:var(--accent3); border-radius:8px; padding:10px 14px; font-size:13px; margin-top:12px; display:none; text-align:center; }
+  .logout-btn { background:rgba(255,107,107,.12); border:1px solid rgba(255,107,107,.2); color:var(--accent3); padding:8px 16px; border-radius:8px; cursor:pointer; font-size:12px; font-weight:600; transition:all .2s; }
+  .logout-btn:hover { background:rgba(255,107,107,.25); }
+  @media(max-width:480px) { .login-box { padding:32px 24px; margin:16px; } }
+
+  /* MATRIX TABLE */
+  .matrix-wrap { overflow-x:auto; }
+  .matrix-table { border-collapse:collapse; font-size:12px; min-width:100%; }
+  .matrix-table th { padding:8px 12px; color:var(--muted); font-weight:600; font-size:11px; text-transform:uppercase; letter-spacing:.4px; border-bottom:1px solid var(--border); white-space:nowrap; }
+  .matrix-table th.col-header { text-align:center; min-width:80px; }
+  .matrix-table th.row-header { text-align:left; min-width:140px; position:sticky; left:0; background:var(--card); z-index:1; }
+  .matrix-table td { padding:7px 12px; border-bottom:1px solid rgba(255,255,255,0.03); text-align:center; }
+  .matrix-table td.row-label { text-align:left; color:var(--text); font-weight:500; white-space:nowrap; position:sticky; left:0; background:var(--card); z-index:1; }
+  .matrix-table td.row-label:hover { background:var(--bg3); }
+  .matrix-table td.total-col { font-weight:700; color:var(--text); background:rgba(124,92,252,.06); }
+  .matrix-table tr.total-row td { font-weight:700; color:var(--text); background:rgba(124,92,252,.06); border-top:1px solid var(--border); }
+  .matrix-table tr.total-row td.row-label { background:rgba(124,92,252,.08); }
+  .matrix-cell { display:inline-flex; align-items:center; justify-content:center; width:100%; height:100%; border-radius:6px; padding:4px 6px; font-weight:600; font-size:12px; min-width:32px; }
+  .matrix-cell.empty { color:rgba(107,107,128,.4); font-weight:400; }
+  .matrix-toggle { display:flex; gap:4px; margin-bottom:12px; }
+  .matrix-toggle button { background:var(--bg3); border:1px solid var(--border); color:var(--muted); padding:6px 14px; border-radius:7px; font-size:12px; cursor:pointer; transition:all .2s; }
+  .matrix-toggle button.active { background:var(--accent); border-color:var(--accent); color:#fff; }
+
+  /* META TABLE CHECKBOXES */
+  .meta-cb { width:16px; height:16px; accent-color:var(--accent); cursor:pointer; vertical-align:middle; }
+  .row-selected td { background:rgba(124,92,252,.08); }
+
+  /* SORTABLE HEADERS */
+  th.sortable { cursor:pointer; user-select:none; white-space:nowrap; transition:color .2s; }
+  th.sortable:hover { color:var(--accent); }
+  th.sortable .sort-icon { font-size:10px; margin-left:4px; opacity:.4; }
+  th.sortable.sort-active .sort-icon { opacity:1; color:var(--accent); }
+
+  /* CHAT POPUP */
+  .chat-fab { position:fixed; bottom:24px; right:24px; width:56px; height:56px; border-radius:50%; background:linear-gradient(135deg,var(--accent),#5a3fd8); border:none; color:#fff; font-size:24px; cursor:pointer; box-shadow:0 4px 24px rgba(124,92,252,.4); z-index:9000; display:flex; align-items:center; justify-content:center; transition:all .2s; }
+  .chat-fab:hover { transform:scale(1.08); box-shadow:0 6px 32px rgba(124,92,252,.6); }
+  .chat-fab .badge-dot { position:absolute; top:8px; right:8px; width:10px; height:10px; background:var(--accent2); border-radius:50%; border:2px solid var(--bg); display:none; }
+
+  .chat-panel { position:fixed; bottom:24px; right:24px; width:400px; height:560px; background:var(--card); border:1px solid var(--border); border-radius:16px; box-shadow:0 12px 48px rgba(0,0,0,.5); z-index:9001; display:none; flex-direction:column; overflow:hidden; }
+  .chat-panel.open { display:flex; }
+
+  .chat-header { background:linear-gradient(135deg,var(--accent),#5a3fd8); padding:16px 20px; display:flex; align-items:center; justify-content:space-between; }
+  .chat-header-title { font-size:14px; font-weight:700; color:#fff; display:flex; align-items:center; gap:8px; }
+  .chat-close { background:none; border:none; color:rgba(255,255,255,.7); font-size:20px; cursor:pointer; padding:0 4px; transition:color .2s; }
+  .chat-close:hover { color:#fff; }
+
+  .chat-messages { flex:1; overflow-y:auto; padding:16px; display:flex; flex-direction:column; gap:12px; }
+  .chat-msg { max-width:85%; padding:10px 14px; border-radius:12px; font-size:13px; line-height:1.5; word-wrap:break-word; }
+  .chat-msg.user { align-self:flex-end; background:var(--accent); color:#fff; border-bottom-right-radius:4px; }
+  .chat-msg.bot { align-self:flex-start; background:var(--bg3); color:var(--text); border-bottom-left-radius:4px; }
+  .chat-msg.bot strong { color:var(--accent); }
+  .chat-msg.typing { color:var(--muted); font-style:italic; }
+
+  .chat-input-wrap { padding:12px 16px; border-top:1px solid var(--border); display:flex; gap:8px; background:var(--bg2); }
+  .chat-input { flex:1; background:var(--bg3); border:1px solid var(--border); color:var(--text); padding:10px 14px; border-radius:10px; font-size:13px; font-family:'Inter',sans-serif; outline:none; resize:none; max-height:80px; }
+  .chat-input:focus { border-color:var(--accent); }
+  .chat-send { background:var(--accent); border:none; color:#fff; width:40px; height:40px; border-radius:10px; cursor:pointer; font-size:16px; display:flex; align-items:center; justify-content:center; transition:all .2s; flex-shrink:0; }
+  .chat-send:hover { background:#5a3fd8; }
+  .chat-send:disabled { opacity:.4; cursor:not-allowed; }
+
+  @media(max-width:480px) {
+    .chat-panel { width:calc(100vw - 16px); height:calc(100vh - 80px); bottom:8px; right:8px; border-radius:12px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- LOGIN OVERLAY -->
+<div id="loginOverlay">
+  <div class="login-box">
+    <div class="login-logo">JO&amp;SO</div>
+    <div class="login-sub">Dashboard de Vendas — Acesso Restrito</div>
+    <div class="login-field">
+      <label>Utilizador</label>
+      <input type="text" id="loginUser" placeholder="Introduza o utilizador" autocomplete="username" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <div class="login-field">
+      <label>Password</label>
+      <input type="password" id="loginPass" placeholder="Introduza a password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <button class="login-btn" onclick="doLogin()">Entrar</button>
+    <div class="login-error" id="loginError">Utilizador ou password incorretos.</div>
+  </div>
+</div>
+
+<div id="appWrapper" style="display:none">
+<div class="header">
+  <div class="logo">JO&amp;SO</div>
+  <div class="header-right">
+    <div class="last-update" id="lastUpdate">A carregar dados...</div>
+    <button class="sync-btn" onclick="loadData()">⟳ Atualizar</button>
+    <button class="logout-btn" onclick="doLogout()">Sair</button>
+  </div>
+</div>
+
+<div class="filters-bar">
+  <div class="filter-group">
+    <span class="filter-label">📅 Período</span>
+    <div class="date-presets">
+      <button class="preset-btn" id="btn-today" onclick="setPreset('today')">Hoje</button>
+      <button class="preset-btn" id="btn-yesterday" onclick="setPreset('yesterday')">Ontem</button>
+      <button class="preset-btn" id="btn-7d" onclick="setPreset('7d')">Últimos 7 dias</button>
+      <button class="preset-btn" id="btn-14d" onclick="setPreset('14d')">Últimos 14 dias</button>
+      <button class="preset-btn" id="btn-30d" onclick="setPreset('30d')">Últimos 30 dias</button>
+      <button class="preset-btn active" id="btn-all" onclick="setPreset('all')">Sempre</button>
+      <button class="preset-btn" id="btn-custom" onclick="setPreset('custom')">Personalizado</button>
+    </div>
+  </div>
+  <div class="custom-dates" id="customDates" style="display:none">
+    <input type="date" id="dateFrom" onchange="applyFilters()">
+    <span style="color:var(--muted)">→</span>
+    <input type="date" id="dateTo" onchange="applyFilters()">
+  </div>
+  <div class="filter-group">
+    <span class="filter-label">🌍 País Prop.</span>
+    <select id="filterCountry" onchange="applyFilters()">
+      <option value="">Todos</option>
+    </select>
+  </div>
+  <div class="filter-group">
+    <span class="filter-label">🧳 País Reserva</span>
+    <select id="filterBookerCountry" onchange="applyFilters()">
+      <option value="">Todos</option>
+    </select>
+  </div>
+</div>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('general')"><span class="tab-icon">📊</span>Análise Geral de Vendas</div>
+  <div class="tab" onclick="switchTab('google')"><span class="tab-icon">🔵</span>Resultados Google</div>
+  <div class="tab" onclick="switchTab('campaigns')"><span class="tab-icon">🎯</span>Campanhas Google</div>
+  <div class="tab" onclick="switchTab('meta')"><span class="tab-icon">🟣</span>Resultados Meta</div>
+</div>
+
+<div class="main">
+  <div id="loadingState" class="loading">
+    <div class="spinner"></div>
+    <p>A carregar dados do Google Sheets...</p>
+  </div>
+
+  <!-- TAB: GERAL -->
+  <div class="tab-content" id="tab-general">
+    <div class="kpi-grid" id="kpi-general"></div>
+    <div class="charts-grid">
+      <div class="chart-card">
+        <div class="chart-title">Comissões por Dia</div>
+        <div class="chart-sub">Evolução temporal das vendas</div>
+        <div class="chart-wrap tall"><canvas id="chartRevTime"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Reservas por País (Propriedade)</div>
+        <div class="chart-sub">Top países por comissão</div>
+        <div class="chart-wrap tall"><canvas id="chartCountry"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">País do Reservante</div>
+        <div class="chart-sub">De onde vêm os clientes</div>
+        <div class="chart-wrap"><canvas id="chartBookerCountry"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Dispositivo Utilizado</div>
+        <div class="chart-sub">App, Desktop, Mobile Browser</div>
+        <div class="chart-wrap"><canvas id="chartDevice"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Tipo de Alojamento</div>
+        <div class="chart-sub">Distribuição por tipo de propriedade</div>
+        <div class="chart-wrap"><canvas id="chartPropType"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Booking Window</div>
+        <div class="chart-sub">Dias de antecedência na reserva</div>
+        <div class="chart-wrap"><canvas id="chartWindow"></canvas></div>
+      </div>
+    </div>
+    <div class="table-card">
+      <div class="section-title"><span></span>Top Propriedades</div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Propriedade</th><th>País</th><th>Tipo</th><th>Reservas</th><th>Comissão Total</th><th>Avg. Stay</th></tr></thead>
+          <tbody id="tableGeneral"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="table-card">
+      <div class="section-title"><span></span>País do Reservante × País da Propriedade</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:14px">Quem compra onde — cruzamento entre origem do cliente e destino da reserva</div>
+      <div class="matrix-toggle">
+        <button class="active" id="matrixBtnBookings" onclick="setMatrixMode('bookings')">Nº Reservas</button>
+        <button id="matrixBtnCommission" onclick="setMatrixMode('commission')">€ Comissão</button>
+      </div>
+      <div class="matrix-wrap" id="matrixWrap"></div>
+    </div>
+  </div>
+
+  <!-- TAB: GOOGLE -->
+  <div class="tab-content" id="tab-google">
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:14px 20px;margin-bottom:20px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+      <span style="font-size:12px;color:var(--muted);font-weight:600;white-space:nowrap;">🎯 Campanha</span>
+      <select id="filterGoogleCampaign" onchange="applyGoogleCampaignFilter()" style="min-width:260px;max-width:480px;">
+        <option value="">Todas as campanhas</option>
+      </select>
+      <span id="googleCampaignCount" style="font-size:12px;color:var(--muted);margin-left:4px;"></span>
+    </div>
+    <div class="kpi-grid" id="kpi-google"></div>
+    <div class="charts-grid">
+      <div class="chart-card">
+        <div class="chart-title">Comissões Google por Dia</div>
+        <div class="chart-sub">utm_medium: paidsearch</div>
+        <div class="chart-wrap tall"><canvas id="chartGoogleTime"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Todas as Campanhas Google</div>
+        <div class="chart-sub">Comissão gerada por campanha</div>
+        <div class="chart-wrap tall"><canvas id="chartGoogleCampaign"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">País da Propriedade</div>
+        <div class="chart-sub">Onde estão as props. reservadas</div>
+        <div class="chart-wrap"><canvas id="chartGoogleCountry"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">País do Reservante</div>
+        <div class="chart-sub">De onde vêm os clientes Google</div>
+        <div class="chart-wrap"><canvas id="chartGoogleBooker"></canvas></div>
+      </div>
+    </div>
+    <div class="table-card">
+      <div class="section-title"><span></span>Detalhes Google Ads</div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Propriedade</th><th>País</th><th>Cidade</th><th>Nº Reservas</th><th>Confirmadas</th><th>Canceladas</th><th>Comissão Total</th><th>Top Campanha</th></tr></thead>
+          <tbody id="tableGoogle"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="table-card">
+      <div class="section-title"><span></span>País do Reservante × País da Propriedade — Google</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:14px">Quem compra onde via Google Ads — cruzamento entre origem do cliente e destino da reserva</div>
+      <div class="matrix-toggle">
+        <button class="active" id="gMatrixBtnBookings" onclick="setGoogleMatrixMode('bookings')">Nº Reservas</button>
+        <button id="gMatrixBtnCommission" onclick="setGoogleMatrixMode('commission')">€ Comissão</button>
+      </div>
+      <div class="matrix-wrap" id="matrixWrapGoogle"></div>
+    </div>
+  </div>
+
+  <!-- TAB: CAMPANHAS GOOGLE -->
+  <div class="tab-content" id="tab-campaigns">
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:14px 20px;margin-bottom:20px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+      <span style="font-size:12px;color:var(--muted);font-weight:600;white-space:nowrap;">🎯 Filtrar Campanha</span>
+      <select id="filterCampTab" onchange="applyCampTabFilter()" style="min-width:260px;max-width:480px;">
+        <option value="">Todas as campanhas</option>
+      </select>
+      <span id="campTabCount" style="font-size:12px;color:var(--muted);margin-left:4px;"></span>
+    </div>
+    <div class="kpi-grid" id="kpi-campaigns"></div>
+    <div class="table-card">
+      <div class="section-title"><span></span>Análise por Campanha</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:14px">Desempenho de cada campanha Google Ads com dados de custo cruzados</div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Campanha</th><th>Nº Reservas</th><th>Valor Reserva (Comissão)</th><th>Custo Total</th><th>ROAS</th><th>Custo / Reserva</th></tr></thead>
+          <tbody id="tableCampaigns"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="table-card">
+      <div class="section-title"><span></span>Análise por Conjunto de Anúncios</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:14px">Desempenho por ad group — cruzamento entre conjuntos de anúncios e reservas geradas</div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Conjunto de Anúncios</th><th>Campanha</th><th>Nº Reservas</th><th>Valor Reserva (Comissão)</th><th>Custo Total</th><th>ROAS</th><th>Custo / Reserva</th></tr></thead>
+          <tbody id="tableAdGroups"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB: META -->
+  <div class="tab-content" id="tab-meta">
+    <div class="kpi-grid" id="kpi-meta"></div>
+    <div class="kpi-grid" id="kpi-meta-cost" style="margin-top:-8px"></div>
+    <div class="charts-grid">
+      <div class="chart-card full">
+        <div class="chart-title">Spend vs Comissão por Dia</div>
+        <div class="chart-sub">Investimento Meta vs receita de comissões</div>
+        <div class="chart-wrap tall"><canvas id="chartMetaSpendVsRev"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Comissões Meta por Dia</div>
+        <div class="chart-sub">utm_source: ig / fb</div>
+        <div class="chart-wrap tall"><canvas id="chartMetaTime"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Instagram vs Facebook</div>
+        <div class="chart-sub">Distribuição por plataforma</div>
+        <div class="chart-wrap tall"><canvas id="chartMetaPlatform"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">País da Propriedade</div>
+        <div class="chart-sub">Top países Meta</div>
+        <div class="chart-wrap"><canvas id="chartMetaCountry"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">País do Reservante</div>
+        <div class="chart-sub">Audiência Meta</div>
+        <div class="chart-wrap"><canvas id="chartMetaBooker"></canvas></div>
+      </div>
+    </div>
+    <div class="table-card">
+      <div class="section-title"><span></span>Performance Meta Ads</div>
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap">
+        <div class="matrix-toggle" id="metaLevelToggle">
+          <button class="active" onclick="setMetaLevel('campaign')">Campanhas</button>
+          <button onclick="setMetaLevel('adset')">Ad Sets</button>
+          <button onclick="setMetaLevel('ad')">Ads</button>
+        </div>
+        <div id="metaSelectionInfo" style="font-size:12px;color:var(--muted)"></div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead id="metaPerfHead"></thead>
+          <tbody id="tableCampaignPerf"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="table-card">
+      <div class="section-title"><span></span>Detalhes Meta Ads</div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Propriedade</th><th>País</th><th>Plataforma</th><th>Dispositivo</th><th>Comissão</th><th>Status</th></tr></thead>
+          <tbody id="tableMeta"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+</div><!-- /appWrapper -->
+
+<script>
+const SHEET_ID = '1GkpFD6aeKecCwbkP9IyakKbw8hziJ9EQBnYtIw2VlqA';
+const GID = '718546705';
+const CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${GID}`;
+
+const COST_SHEET_ID = '1TS0y5oLitYrFw5DqibD-Rpbe4cGP5_e8bHLnfHjGDcY';
+const COST_GID = '0';
+const COST_CSV_URL = `https://docs.google.com/spreadsheets/d/${COST_SHEET_ID}/export?format=csv&gid=${COST_GID}`;
+
+const META_COST_SHEET_ID = '1OHvRPO1R34Tv2S2Raq2_4uLZXBbL3lXMgNi5f8S7Idk';
+const META_COST_GID = '0';
+const META_COST_CSV_URL = `https://docs.google.com/spreadsheets/d/${META_COST_SHEET_ID}/export?format=csv&gid=${META_COST_GID}`;
+
+let allData = [];
+let filteredData = [];
+let costData = [];
+let allMetaCostData = [];
+let filteredMetaCostData = [];
+let currentPreset = 'all';
+let charts = {};
+
+// ─── DATA LOADING ───────────────────────────────────────────────
+async function loadData() {
+  document.getElementById('loadingState').style.display = 'block';
+  document.querySelectorAll('.tab-content').forEach(t => t.style.display = 'none');
+  try {
+    const [r, rCost, rMetaCost] = await Promise.all([fetch(CSV_URL), fetch(COST_CSV_URL), fetch(META_COST_CSV_URL)]);
+    const csv = await r.text();
+    allData = parseCSV(csv);
+    const costCsv = await rCost.text();
+    costData = parseCostCSV(costCsv);
+    const metaCostCsv = await rMetaCost.text();
+    allMetaCostData = parseMetaCostCSV(metaCostCsv);
+    populateFilters();
+    applyFilters();
+    document.getElementById('lastUpdate').textContent = 'Atualizado: ' + new Date().toLocaleTimeString('pt-PT');
+  } catch(e) {
+    document.getElementById('loadingState').innerHTML = '<p style="color:var(--accent3)">❌ Erro ao carregar dados. Verifique a conexão e permissões da folha.</p>';
+  }
+}
+
+function parseCostCSV(csv) {
+  const lines = csv.split('\n');
+  const headers = parseCSVLine(lines[0]);
+  return lines.slice(1).filter(l => l.trim()).map(line => {
+    const vals = parseCSVLine(line);
+    const obj = {};
+    headers.forEach((h, i) => obj[h.trim()] = (vals[i] || '').trim());
+    // parse cost — handles formats like "14,82€" or "14.82"
+    let costStr = obj[headers.find(h => h.trim().toLowerCase().includes('cost'))?.trim()] || obj[headers[3]?.trim()] || '0';
+    costStr = costStr.replace('€','').replace(/\./g,'').replace(',','.').trim();
+    obj._cost = parseFloat(costStr) || 0;
+    obj._campaign = obj[headers[1]?.trim()] || '';
+    obj._adGroup = obj[headers[2]?.trim()] || '';
+    obj._date = obj[headers[0]?.trim()] || '';
+    return obj;
+  });
+}
+
+function parseMetaCostCSV(csv) {
+  const lines = csv.split('\n');
+  const headers = parseCSVLine(lines[0]);
+  return lines.slice(1).filter(l => l.trim()).map(line => {
+    const vals = parseCSVLine(line);
+    const obj = {};
+    headers.forEach((h, i) => obj[h.trim()] = (vals[i] || '').trim());
+    obj._spend = parseFloat((obj['Amount Spent'] || '0').replace(',','.')) || 0;
+    obj._clicks = parseInt(obj['Link Clicks']) || 0;
+    obj._date = obj['Day'] ? new Date(obj['Day']) : null;
+    obj._campaignId = obj['Campaign ID'] || '';
+    obj._campaignName = obj['Campaign Name'] || '';
+    obj._adSetId = obj['Ad Set ID'] || '';
+    obj._adSetName = obj['Ad Set Name'] || '';
+    obj._adId = obj['Ad ID'] || '';
+    obj._adName = obj['Ad Name'] || '';
+    return obj;
+  });
+}
+
+function parseCSV(csv) {
+  const lines = csv.split('\n');
+  const headers = parseCSVLine(lines[0]);
+  return lines.slice(1).filter(l => l.trim()).map(line => {
+    const vals = parseCSVLine(line);
+    const obj = {};
+    headers.forEach((h, i) => obj[h.trim()] = (vals[i] || '').trim());
+    // parse commission
+    obj._commission = parseFloat((obj['Your commission'] || '0').replace(',','.')) || 0;
+    // parse booking date
+    obj._date = parseDate(obj['Booking date']);
+    // parse utm
+    const label = obj['Label'] || '';
+    obj._utmMedium = extractUTM(label, 'utm_medium');
+    obj._utmSource = extractUTM(label, 'utm_source');
+    obj._utmCampaign = extractUTM(label, 'utm_campaign');
+    obj._utmContent = extractUTM(label, 'utm_content');
+    obj._utmTerm = extractUTM(label, 'utm_term');
+    obj._utmAdgroup = extractUTM(label, 'utm_adgroup') || extractUTM(label, 'utm_content');
+    obj._isGoogle = obj._utmMedium === 'paidsearch';
+    const srcLower = obj._utmSource.toLowerCase();
+    obj._isMeta = srcLower.startsWith('ig') || srcLower.startsWith('fb') || srcLower === 'instagram' || srcLower === 'facebook';
+    return obj;
+  });
+}
+
+function parseCSVLine(line) {
+  const result = [];
+  let cur = '', inQ = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (c === '"') { inQ = !inQ; }
+    else if (c === ',' && !inQ) { result.push(cur); cur = ''; }
+    else cur += c;
+  }
+  result.push(cur);
+  return result;
+}
+
+function parseDate(str) {
+  if (!str) return null;
+  const [m, d, y] = str.split('/');
+  if (!m || !d || !y) return null;
+  return new Date(parseInt(y), parseInt(m)-1, parseInt(d));
+}
+
+function extractUTM(label, key) {
+  const match = label.match(new RegExp(key + ':([^|&\\s]+)'));
+  return match ? match[1] : '';
+}
+
+// ─── FILTERS ────────────────────────────────────────────────────
+function setPreset(p) {
+  currentPreset = p;
+  document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('btn-' + p).classList.add('active');
+  document.getElementById('customDates').style.display = p === 'custom' ? 'flex' : 'none';
+  if (p !== 'custom') applyFilters();
+}
+
+function _dateFilter(d, today) {
+  if (currentPreset === 'today') { if (d.toDateString() !== today.toDateString()) return false; }
+  else if (currentPreset === 'yesterday') {
+    const y = new Date(today); y.setDate(y.getDate() - 1);
+    if (d.toDateString() !== y.toDateString()) return false;
+  }
+  else if (currentPreset === '7d') { if (d < new Date(today.getTime() - 6*86400000)) return false; }
+  else if (currentPreset === '14d') { if (d < new Date(today.getTime() - 13*86400000)) return false; }
+  else if (currentPreset === '30d') { if (d < new Date(today.getTime() - 29*86400000)) return false; }
+  else if (currentPreset === 'custom') {
+    const from = document.getElementById('dateFrom').value;
+    const to = document.getElementById('dateTo').value;
+    if (from && d < new Date(from + 'T00:00:00')) return false;
+    if (to && d > new Date(to + 'T23:59:59')) return false;
+  }
+  return true;
+}
+
+function applyFilters() {
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const country = document.getElementById('filterCountry').value;
+  const booker = document.getElementById('filterBookerCountry').value;
+
+  filteredData = allData.filter(row => {
+    if (!row._date) return false;
+    if (!_dateFilter(row._date, today)) return false;
+    if (country && row['Country'] !== country) return false;
+    if (booker && row['Booker country'] !== booker) return false;
+    return true;
+  });
+
+  filteredMetaCostData = allMetaCostData.filter(row => {
+    if (!row._date) return false;
+    return _dateFilter(row._date, today);
+  });
+
+  renderAll();
+}
+
+function populateFilters() {
+  const countries = [...new Set(allData.map(r => r['Country']).filter(Boolean))].sort();
+  const bookers = [...new Set(allData.map(r => r['Booker country']).filter(Boolean))].sort();
+  fillSelect('filterCountry', countries);
+  fillSelect('filterBookerCountry', bookers);
+}
+
+function fillSelect(id, opts) {
+  const sel = document.getElementById(id);
+  const cur = sel.value;
+  sel.innerHTML = '<option value="">Todos</option>' + opts.map(o => `<option value="${o}"${o===cur?' selected':''}>${o}</option>`).join('');
+}
+
+// ─── RENDER ─────────────────────────────────────────────────────
+function renderAll() {
+  document.getElementById('loadingState').style.display = 'none';
+  document.querySelectorAll('.tab-content').forEach(t => t.style.display = '');
+
+  const google = filteredData.filter(r => r._isGoogle);
+  const meta = filteredData.filter(r => r._isMeta);
+  const activeTab = document.querySelector('.tab-content.active');
+  if (!activeTab) document.getElementById('tab-general').classList.add('active');
+
+  renderGeneral(filteredData);
+  renderGoogle(google);
+  renderCampaigns(google);
+  renderMeta(meta, filteredMetaCostData);
+}
+
+// ─── GENERAL ────────────────────────────────────────────────────
+function renderGeneral(data) {
+  const total = sum(data, '_commission');
+  const booked = data.filter(r => r['Status'] === 'Booked');
+  const cancelled = data.filter(r => (r['Status']||'').toLowerCase().includes('cancel'));
+  const avgStay = avg(data, 'Length of stay');
+  const avgWindow = avg(data, 'Booking window');
+
+  const cancelRate = data.length ? (cancelled.length / data.length * 100) : 0;
+
+  document.getElementById('kpi-general').innerHTML = `
+    ${kpi('c1','💰','Comissão Total','€ '+fmt(total),'Total do período')}
+    ${kpi('c2','📋','Total Reservas',data.length,'Todas as entradas')}
+    ${kpi('c3','✅','Confirmadas',booked.length,'Estado: Booked')}
+    ${kpi('c4','❌','Canceladas',cancelled.length,'Estado: Cancelled')}
+    ${kpi('c5','🌙','Avg. Noites',avgStay.toFixed(1),'Duração média')}
+    ${kpi('c3','📉','Taxa Cancelamento',cancelRate.toFixed(1)+'%','Canceladas / Total')}
+  `;
+
+  // Revenue over time
+  const byDay = groupByDate(data);
+  makeLineChart('chartRevTime', Object.keys(byDay), Object.values(byDay).map(v => sumArr(v,'_commission')), '€ Comissão', '#7c5cfc');
+
+  // Country bar
+  const byCtr = topN(groupBy(data,'Country'), 10);
+  makeBarChart('chartCountry', Object.keys(byCtr), Object.values(byCtr).map(v => sumArr(v,'_commission')), '€', COLORS);
+
+  // Booker country
+  const byBkr = topN(groupBy(data,'Booker country'), 10);
+  makeBarChart('chartBookerCountry', Object.keys(byBkr), Object.values(byBkr).map(v => v.length), 'Reservas', COLORS2);
+
+  // Device
+  const byDev = groupBy(data,'User device');
+  makeDoughnut('chartDevice', Object.keys(byDev), Object.values(byDev).map(v => v.length));
+
+  // Prop type
+  const byType = groupBy(data,'Property type');
+  makeDoughnut('chartPropType', Object.keys(byType), Object.values(byType).map(v => v.length), COLORS2);
+
+  // Booking window buckets
+  const buckets = {'0-7 dias':0,'8-30 dias':0,'31-90 dias':0,'91+ dias':0};
+  data.forEach(r => {
+    const w = parseInt(r['Booking window']) || 0;
+    if (w <= 7) buckets['0-7 dias']++;
+    else if (w <= 30) buckets['8-30 dias']++;
+    else if (w <= 90) buckets['31-90 dias']++;
+    else buckets['91+ dias']++;
+  });
+  makeBarChart('chartWindow', Object.keys(buckets), Object.values(buckets), 'Reservas', COLORS);
+
+  // Table
+  const byProp = groupBy(data, 'Property name');
+  const rows = Object.entries(byProp)
+    .map(([name,v]) => ({name, country:v[0]['Country'], type:v[0]['Property type'], count:v.length, commission:sumArr(v,'_commission'), avgStay:avg(v,'Length of stay')}))
+    .sort((a,b) => b.commission - a.commission).slice(0,20);
+  document.getElementById('tableGeneral').innerHTML = rows.map(r =>
+    `<tr><td>${r.name}</td><td>${r.country}</td><td>${r.type}</td><td>${r.count}</td><td><strong>€ ${fmt(r.commission)}</strong></td><td>${r.avgStay.toFixed(1)} noites</td></tr>`
+  ).join('');
+
+  renderMatrix(data);
+}
+
+// ─── GOOGLE ─────────────────────────────────────────────────────
+let _googleBaseData = [];
+
+function applyGoogleCampaignFilter() {
+  const camp = document.getElementById('filterGoogleCampaign').value;
+  const filtered = camp ? _googleBaseData.filter(r => r._utmCampaign === camp) : _googleBaseData;
+  const countEl = document.getElementById('googleCampaignCount');
+  if (countEl) countEl.textContent = camp ? `${filtered.length} reservas` : '';
+  renderGoogleCharts(filtered);
+}
+
+function renderGoogle(data) {
+  _googleBaseData = data;
+
+  // Populate campaign dropdown preserving current selection
+  const sel = document.getElementById('filterGoogleCampaign');
+  const prev = sel.value;
+  const campaigns = [...new Set(data.map(r => r._utmCampaign).filter(Boolean))].sort();
+  sel.innerHTML = '<option value="">Todas as campanhas</option>' +
+    campaigns.map(c => `<option value="${c}"${c===prev?' selected':''}>${c}</option>`).join('');
+
+  // If previously selected campaign no longer exists in new data, reset
+  const activeCamp = campaigns.includes(prev) ? prev : '';
+  if (!campaigns.includes(prev)) sel.value = '';
+
+  const filtered = activeCamp ? data.filter(r => r._utmCampaign === activeCamp) : data;
+  const countEl = document.getElementById('googleCampaignCount');
+  if (countEl) countEl.textContent = activeCamp ? `${filtered.length} reservas` : '';
+
+  renderGoogleCharts(filtered);
+}
+
+function renderGoogleCharts(data) {
+  const total = sum(data, '_commission');
+  const booked = data.filter(r => r['Status'] === 'Booked');
+  const cancelledG = data.filter(r => (r['Status']||'').toLowerCase().includes('cancel'));
+  const cancelRateG = data.length ? (cancelledG.length / data.length * 100) : 0;
+  const avgComm = data.length ? total/data.length : 0;
+
+  document.getElementById('kpi-google').innerHTML = `
+    ${kpi('c1','🔵','Comissão Google','€ '+fmt(total),'utm_medium: paidsearch')}
+    ${kpi('c2','📋','Reservas Google',data.length,'Total via Google')}
+    ${kpi('c3','✅','Confirmadas',booked.length,'Estado: Booked')}
+    ${kpi('c4','💵','Avg. Comissão','€ '+fmt(avgComm),'Por reserva')}
+    ${kpi('c3','📉','Taxa Cancelamento',cancelRateG.toFixed(1)+'%','Canceladas / Total')}
+  `;
+
+  const byDay = groupByDate(data);
+  makeLineChart('chartGoogleTime', Object.keys(byDay), Object.values(byDay).map(v => sumArr(v,'_commission')), '€', '#4285f4');
+
+  const byCampAll = groupBy(data,'_utmCampaign');
+  const byCampSorted = Object.fromEntries(Object.entries(byCampAll).sort((a,b) => sumArr(b[1],'_commission') - sumArr(a[1],'_commission')));
+  const campCount = Object.keys(byCampSorted).length;
+  const campCanvas = document.getElementById('chartGoogleCampaign');
+  if (campCanvas) campCanvas.parentElement.style.height = Math.max(300, campCount * 36) + 'px';
+  makeBarChart('chartGoogleCampaign', Object.keys(byCampSorted), Object.values(byCampSorted).map(v => sumArr(v,'_commission')), '€', [GOOGLE_COLOR]);
+
+  const byCtr = topN(groupBy(data,'Country'), 8);
+  makeBarChart('chartGoogleCountry', Object.keys(byCtr), Object.values(byCtr).map(v => v.length), 'Reservas', COLORS);
+
+  const byBkr = topN(groupBy(data,'Booker country'), 8);
+  makeBarChart('chartGoogleBooker', Object.keys(byBkr), Object.values(byBkr).map(v => v.length), 'Reservas', COLORS2);
+
+  // Group by property for summary table
+  const byPropG = groupBy(data, 'Property name');
+  const propRowsG = Object.entries(byPropG)
+    .map(([name, v]) => {
+      const confirmed = v.filter(r => r['Status'] === 'Booked').length;
+      const cancelled = v.filter(r => (r['Status']||'').toLowerCase().includes('cancel')).length;
+      const commission = sumArr(v, '_commission');
+      const city = v[0]['City'] || v[0]['city'] || '—';
+      const country = v[0]['Country'] || '—';
+      // find top campaign by count
+      const campCounts = {};
+      v.forEach(r => { if (r._utmCampaign) campCounts[r._utmCampaign] = (campCounts[r._utmCampaign]||0)+1; });
+      const topCamp = Object.entries(campCounts).sort((a,b)=>b[1]-a[1])[0];
+      return { name, country, city, count: v.length, confirmed, cancelled, commission, topCamp: topCamp ? topCamp[0] : '—' };
+    })
+    .sort((a,b) => b.commission - a.commission);
+  document.getElementById('tableGoogle').innerHTML = propRowsG.map(r =>
+    `<tr>
+      <td><strong>${r.name}</strong></td>
+      <td>${r.country}</td>
+      <td>${r.city}</td>
+      <td><strong>${r.count}</strong></td>
+      <td><span class="badge badge-green">${r.confirmed}</span></td>
+      <td><span class="badge badge-red">${r.cancelled}</span></td>
+      <td><strong>€ ${fmt(r.commission)}</strong></td>
+      <td style="font-size:11px;color:var(--muted);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.topCamp}">${r.topCamp.substring(0,35)}${r.topCamp.length>35?'…':''}</td>
+    </tr>`
+  ).join('');
+
+  renderGoogleMatrix(data);
+}
+
+// ─── CAMPAIGNS TAB ──────────────────────────────────────────────
+let _campTabBaseData = [];
+
+// Normalize cost campaign name to utm_campaign slug
+// "BBH | Japan" → "bb-japan", "JO&SO || REGIONS" → "js-regions", etc.
+function costCampToUtm(costName) {
+  let s = costName.trim().toLowerCase();
+  // BBH | ... → bb-...
+  s = s.replace(/^bbh\s*\|\s*/, 'bb-');
+  // JO&SO || ... → js-...
+  s = s.replace(/^jo&so\s*\|\|\s*/, 'js-');
+  // "BBH | London | UK Only" → after first replace: "bb-london | uk only"
+  // Replace remaining separators
+  s = s.replace(/\s*\|\|\s*/g, '-').replace(/\s*\|\s*/g, '-');
+  // Collapse spaces to dashes
+  s = s.replace(/\s+/g, '-');
+  // Remove special characters except dashes
+  s = s.replace(/[^a-z0-9\-]/g, '');
+  // Collapse multiple dashes
+  s = s.replace(/-+/g, '-').replace(/^-|-$/g, '');
+  return s;
+}
+
+// Normalize cost ad group "[Japan]" → "japan"
+function costAdGroupToUtm(costAg) {
+  let s = costAg.trim().toLowerCase();
+  s = s.replace(/^\[/, '').replace(/\]$/, '');
+  s = s.replace(/\s+/g, '-');
+  s = s.replace(/[^a-z0-9\-]/g, '');
+  s = s.replace(/-+/g, '-').replace(/^-|-$/g, '');
+  return s;
+}
+
+function applyCampTabFilter() {
+  const camp = document.getElementById('filterCampTab').value;
+  const filtered = camp ? _campTabBaseData.filter(r => r._utmCampaign === camp) : _campTabBaseData;
+  const countEl = document.getElementById('campTabCount');
+  if (countEl) countEl.textContent = camp ? `${filtered.length} reservas` : '';
+  renderCampaignTables(filtered, camp);
+}
+
+function renderCampaigns(googleData) {
+  _campTabBaseData = googleData;
+
+  // Populate campaign filter
+  const sel = document.getElementById('filterCampTab');
+  const prev = sel.value;
+  const campaigns = [...new Set(googleData.map(r => r._utmCampaign).filter(Boolean))].sort();
+  sel.innerHTML = '<option value="">Todas as campanhas</option>' +
+    campaigns.map(c => `<option value="${c}"${c===prev?' selected':''}>${c}</option>`).join('');
+  const activeCamp = campaigns.includes(prev) ? prev : '';
+  if (!campaigns.includes(prev)) sel.value = '';
+
+  const filtered = activeCamp ? googleData.filter(r => r._utmCampaign === activeCamp) : googleData;
+  const countEl = document.getElementById('campTabCount');
+  if (countEl) countEl.textContent = activeCamp ? `${filtered.length} reservas` : '';
+
+  renderCampaignTables(filtered, activeCamp);
+}
+
+function renderCampaignTables(data, selectedCamp) {
+  // Build cost lookup: normalized utm slug → total cost
+  // Also keep cost campaign display name
+  const costByCampUtm = {};    // utm slug → { cost, displayName }
+  const costByAgUtm = {};      // "campUtm|||agUtm" → { cost, displayCamp, displayAg }
+  costData.forEach(c => {
+    if (!c._campaign) return;
+    const campUtm = costCampToUtm(c._campaign);
+    if (!costByCampUtm[campUtm]) costByCampUtm[campUtm] = { cost: 0, displayName: c._campaign };
+    costByCampUtm[campUtm].cost += c._cost;
+
+    const agUtm = costAdGroupToUtm(c._adGroup || '');
+    const agKey = campUtm + '|||' + agUtm;
+    if (!costByAgUtm[agKey]) costByAgUtm[agKey] = { cost: 0, displayCamp: c._campaign, displayAg: c._adGroup || '' };
+    costByAgUtm[agKey].cost += c._cost;
+  });
+
+  // Aggregate bookings by utm_campaign
+  const bookByCampaign = groupBy(data, '_utmCampaign');
+
+  // Build unified campaign list using utm slugs
+  const allUtmSlugs = new Set([
+    ...Object.keys(costByCampUtm),
+    ...Object.keys(bookByCampaign).map(k => k.toLowerCase())
+  ]);
+
+  const campRows = [];
+  let totalBookings = 0, totalCommission = 0, totalCost = 0;
+
+  allUtmSlugs.forEach(slug => {
+    if (!slug || slug === 'desconhecido') return;
+
+    // Find booking rows for this slug
+    const bookKey = Object.keys(bookByCampaign).find(k => k.toLowerCase() === slug);
+    const bookRows = bookKey ? bookByCampaign[bookKey] : [];
+    const costEntry = costByCampUtm[slug];
+
+    // If filtering by campaign, check match
+    if (selectedCamp && (!bookKey || bookKey !== selectedCamp)) {
+      if (selectedCamp.toLowerCase() !== slug) return;
+    }
+
+    const nBookings = bookRows.length;
+    const commission = sumArr(bookRows, '_commission');
+    const cost = costEntry ? costEntry.cost : 0;
+    const displayName = costEntry ? costEntry.displayName : (bookKey || slug);
+    const roas = cost > 0 ? commission / cost : 0;
+    const cpr = nBookings > 0 && cost > 0 ? cost / nBookings : 0;
+
+    campRows.push({ name: displayName, utmName: bookKey || slug, nBookings, commission, cost, roas, cpr });
+    totalBookings += nBookings;
+    totalCommission += commission;
+    totalCost += cost;
+  });
+
+  campRows.sort((a, b) => b.commission - a.commission);
+
+  // KPIs
+  const totalROAS = totalCost > 0 ? totalCommission / totalCost : 0;
+  const totalCPR = totalBookings > 0 && totalCost > 0 ? totalCost / totalBookings : 0;
+
+  document.getElementById('kpi-campaigns').innerHTML = `
+    ${kpi('c1','🎯','Campanhas Ativas', campRows.filter(r => r.nBookings > 0).length,'Com reservas no período')}
+    ${kpi('c2','📋','Total Reservas', totalBookings,'Via Google Ads')}
+    ${kpi('c1','💰','Comissão Total','€ '+fmt(totalCommission),'Receita gerada')}
+    ${kpi('c4','💸','Custo Total','€ '+fmt(totalCost),'Investimento Google Ads')}
+    ${kpi('c2','📈','ROAS Geral', totalROAS.toFixed(2)+'x','Retorno sobre investimento')}
+    ${kpi('c3','🏷️','Custo / Reserva','€ '+fmt(totalCPR),'Custo médio por reserva')}
+  `;
+
+  // Campaign table
+  document.getElementById('tableCampaigns').innerHTML = campRows.map(r => {
+    const roasColor = r.roas >= 2 ? 'var(--accent2)' : r.roas >= 1 ? 'var(--accent4)' : 'var(--accent3)';
+    return `<tr>
+      <td><strong>${r.name}</strong><div style="font-size:10px;color:var(--muted);margin-top:2px">${r.utmName}</div></td>
+      <td><strong>${r.nBookings}</strong></td>
+      <td><strong>€ ${fmt(r.commission)}</strong></td>
+      <td>€ ${fmt(r.cost)}</td>
+      <td><span style="color:${roasColor};font-weight:700">${r.roas.toFixed(2)}x</span></td>
+      <td>${r.nBookings > 0 && r.cost > 0 ? '€ '+fmt(r.cpr) : '—'}</td>
+    </tr>`;
+  }).join('') + (campRows.length > 1 ? `<tr style="border-top:2px solid var(--border);background:rgba(124,92,252,.04)">
+      <td><strong>TOTAL</strong></td>
+      <td><strong>${totalBookings}</strong></td>
+      <td><strong>€ ${fmt(totalCommission)}</strong></td>
+      <td><strong>€ ${fmt(totalCost)}</strong></td>
+      <td><span style="color:${totalROAS >= 2 ? 'var(--accent2)' : totalROAS >= 1 ? 'var(--accent4)' : 'var(--accent3)'};font-weight:700">${totalROAS.toFixed(2)}x</span></td>
+      <td><strong>${totalCPR > 0 ? '€ '+fmt(totalCPR) : '—'}</strong></td>
+    </tr>` : '');
+
+  // ── Ad Group table ──
+  // Aggregate bookings by utm_campaign + utm_adgroup
+  const bookByAg = {};
+  data.forEach(r => {
+    const campSlug = (r._utmCampaign || '').toLowerCase();
+    const agSlug = (r._utmAdgroup || 'desconhecido').toLowerCase();
+    const key = campSlug + '|||' + agSlug;
+    if (!bookByAg[key]) bookByAg[key] = { campSlug, agSlug, utmCampaign: r._utmCampaign, utmAdgroup: r._utmAdgroup || 'Desconhecido', rows: [] };
+    bookByAg[key].rows.push(r);
+  });
+
+  // Also include ad groups from cost data that have no bookings
+  Object.entries(costByAgUtm).forEach(([key, info]) => {
+    if (!bookByAg[key] && info.cost > 0) {
+      const [campSlug, agSlug] = key.split('|||');
+      if (selectedCamp && selectedCamp.toLowerCase() !== campSlug) return;
+      bookByAg[key] = { campSlug, agSlug, utmCampaign: info.displayCamp, utmAdgroup: info.displayAg, rows: [] };
+    }
+  });
+
+  const adGroupRows = Object.entries(bookByAg).map(([key, obj]) => {
+    const nBookings = obj.rows.length;
+    const commission = sumArr(obj.rows, '_commission');
+    const costInfo = costByAgUtm[key];
+    const cost = costInfo ? costInfo.cost : 0;
+    const displayAg = costInfo ? costInfo.displayAg : obj.utmAdgroup;
+    const displayCamp = costInfo ? costInfo.displayCamp : obj.utmCampaign;
+    const roas = cost > 0 ? commission / cost : 0;
+    const cpr = nBookings > 0 && cost > 0 ? cost / nBookings : 0;
+    return { adGroup: displayAg, adGroupUtm: obj.agSlug, campaign: displayCamp, nBookings, commission, cost, roas, cpr };
+  }).sort((a, b) => b.commission - a.commission);
+
+  document.getElementById('tableAdGroups').innerHTML = adGroupRows.map(r => {
+    const roasColor = r.roas >= 2 ? 'var(--accent2)' : r.roas >= 1 ? 'var(--accent4)' : 'var(--accent3)';
+    return `<tr>
+      <td><strong>${r.adGroup}</strong><div style="font-size:10px;color:var(--muted);margin-top:2px">${r.adGroupUtm}</div></td>
+      <td style="font-size:11px;color:var(--muted);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.campaign}">${r.campaign.substring(0,30)}${r.campaign.length>30?'…':''}</td>
+      <td><strong>${r.nBookings}</strong></td>
+      <td><strong>€ ${fmt(r.commission)}</strong></td>
+      <td>€ ${fmt(r.cost)}</td>
+      <td><span style="color:${roasColor};font-weight:700">${r.roas > 0 ? r.roas.toFixed(2)+'x' : '—'}</span></td>
+      <td>${r.nBookings > 0 && r.cost > 0 ? '€ '+fmt(r.cpr) : '—'}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ─── META ────────────────────────────────────────────────────────
+function renderMeta(data, metaCost) {
+  const totalComm = sum(data, '_commission');
+  const booked = data.filter(r => r['Status'] === 'Booked');
+  const bookedComm = sum(booked, '_commission');
+  const cancelledM = data.filter(r => (r['Status']||'').toLowerCase().includes('cancel'));
+  const cancelRateM = data.length ? (cancelledM.length / data.length * 100) : 0;
+  const ig = data.filter(r => r._utmSource.toLowerCase().startsWith('ig'));
+  const fb = data.filter(r => r._utmSource.toLowerCase().startsWith('fb'));
+
+  // Cost metrics
+  const totalSpend = metaCost.reduce((s,r) => s + r._spend, 0);
+  const totalClicks = metaCost.reduce((s,r) => s + r._clicks, 0);
+  const roas = totalSpend > 0 ? bookedComm / totalSpend : 0;
+  const cpa = booked.length > 0 ? totalSpend / booked.length : 0;
+  const cpc = totalClicks > 0 ? totalSpend / totalClicks : 0;
+
+  document.getElementById('kpi-meta').innerHTML = `
+    ${kpi('c1','🟣','Comissão Meta','€ '+fmt(totalComm),'ig + fb')}
+    ${kpi('c2','📋','Reservas Meta',data.length,'Total via Meta')}
+    ${kpi('c3','📸','Instagram',ig.length,'utm_source: ig')}
+    ${kpi('c4','👤','Facebook',fb.length,'utm_source: fb')}
+    ${kpi('c3','📉','Taxa Cancelamento',cancelRateM.toFixed(1)+'%','Canceladas / Total')}
+  `;
+
+  document.getElementById('kpi-meta-cost').innerHTML = `
+    ${kpi('c3','💸','Total Spend','€ '+fmt(totalSpend),'Investimento Meta Ads')}
+    ${kpi('c2','📈','ROAS',roas.toFixed(2)+'x','Comissão (Booked) / Spend')}
+    ${kpi('c4','🎯','CPA','€ '+fmt(cpa),'Custo por reserva (Booked)')}
+    ${kpi('c5','🖱️','CPC Médio','€ '+fmt(cpc),totalClicks+' clicks totais')}
+  `;
+
+  // Spend vs Commission over time
+  const spendByDay = {};
+  metaCost.forEach(r => {
+    if (!r._date) return;
+    const k = r._date.toLocaleDateString('pt-PT');
+    spendByDay[k] = (spendByDay[k] || 0) + r._spend;
+  });
+  const commByDay = {};
+  data.forEach(r => {
+    if (!r._date) return;
+    const k = r._date.toLocaleDateString('pt-PT');
+    commByDay[k] = (commByDay[k] || 0) + r._commission;
+  });
+  const allDays = [...new Set([...Object.keys(spendByDay), ...Object.keys(commByDay)])].sort((a,b) => {
+    const [da,ma,ya] = a.split('/'); const [db,mb,yb] = b.split('/');
+    return new Date(ya,ma-1,da) - new Date(yb,mb-1,db);
+  });
+  makeDualLineChart('chartMetaSpendVsRev', allDays,
+    allDays.map(d => spendByDay[d]||0), allDays.map(d => commByDay[d]||0),
+    'Spend', 'Comissão', '#ff6b6b', '#00d4aa'
+  );
+
+  const byDay = groupByDate(data);
+  makeLineChart('chartMetaTime', Object.keys(byDay), Object.values(byDay).map(v => sumArr(v,'_commission')), '€', '#e040fb');
+
+  makeDoughnut('chartMetaPlatform',
+    ['Instagram','Facebook','Outros'],
+    [ig.length, fb.length, data.length - ig.length - fb.length],
+    ['#e040fb','#0668e1','#888']
+  );
+
+  const byCtr = topN(groupBy(data,'Country'), 8);
+  makeBarChart('chartMetaCountry', Object.keys(byCtr), Object.values(byCtr).map(v => v.length), 'Reservas', COLORS);
+
+  const byBkr = topN(groupBy(data,'Booker country'), 8);
+  makeBarChart('chartMetaBooker', Object.keys(byBkr), Object.values(byBkr).map(v => v.length), 'Reservas', COLORS2);
+
+  // Store data for Ads Manager table
+  _metaCostData = metaCost;
+  _metaBookingData = data;
+  _metaSelectedCampaigns.clear();
+  _metaSelectedAdSets.clear();
+  _metaLevel = 'campaign';
+  document.querySelectorAll('#metaLevelToggle button').forEach((b,i) => b.classList.toggle('active', i===0));
+  renderMetaPerfTable();
+
+  document.getElementById('tableMeta').innerHTML = data.slice(0,30).map(r =>
+    `<tr><td>${r['Property name']}</td><td>${r['Country']}</td><td><span style="font-weight:600;color:${r._utmSource.toLowerCase().startsWith('ig')?'#e040fb':'#0668e1'}">${r._utmSource.toUpperCase()||'?'}</span></td><td>${r['User device']}</td><td>€ ${fmt(r._commission)}</td><td><span class="badge ${badgeClass(r['Status'])}">${r['Status']}</span></td></tr>`
+  ).join('');
+}
+
+// ─── META PERFORMANCE TABLE (Ads Manager style) ────────────────
+let _metaCostData = [];
+let _metaBookingData = [];
+let _metaLevel = 'campaign';
+let _metaSelectedCampaigns = new Set();
+let _metaSelectedAdSets = new Set();
+let _metaSortCol = 'spend';
+let _metaSortDir = 'desc';
+
+function metaSort(col) {
+  if (_metaSortCol === col) { _metaSortDir = _metaSortDir === 'desc' ? 'asc' : 'desc'; }
+  else { _metaSortCol = col; _metaSortDir = col === 'name' || col === 'parent' ? 'asc' : 'desc'; }
+  renderMetaPerfTable();
+}
+
+function setMetaLevel(level) {
+  _metaLevel = level;
+  if (level === 'campaign') { _metaSelectedAdSets.clear(); }
+  document.querySelectorAll('#metaLevelToggle button').forEach((b,i) => {
+    b.classList.toggle('active', (level==='campaign' && i===0)||(level==='adset' && i===1)||(level==='ad' && i===2));
+  });
+  renderMetaPerfTable();
+}
+
+function metaToggleRow(id) {
+  const set = _metaLevel === 'campaign' ? _metaSelectedCampaigns : _metaSelectedAdSets;
+  if (set.has(id)) set.delete(id); else set.add(id);
+  renderMetaPerfTable();
+}
+
+function metaToggleAll(checked, ids) {
+  const set = _metaLevel === 'campaign' ? _metaSelectedCampaigns : _metaSelectedAdSets;
+  if (checked) ids.forEach(id => set.add(id)); else set.clear();
+  renderMetaPerfTable();
+}
+
+function metaToggleAllFromCb(checked) {
+  metaToggleAll(checked, window._metaCurrentRowIds || []);
+}
+
+function renderMetaPerfTable() {
+  const costData = _metaCostData;
+  const bookingData = _metaBookingData;
+  const level = _metaLevel;
+
+  // Scope data by parent selections
+  let scopedCost = costData;
+  let scopedBookings = bookingData;
+
+  if (level === 'adset' || level === 'ad') {
+    if (_metaSelectedCampaigns.size > 0) {
+      scopedCost = scopedCost.filter(r => _metaSelectedCampaigns.has(r._campaignId));
+      scopedBookings = scopedBookings.filter(r => _metaSelectedCampaigns.has(r._utmCampaign));
+    }
+  }
+  if (level === 'ad') {
+    if (_metaSelectedAdSets.size > 0) {
+      scopedCost = scopedCost.filter(r => _metaSelectedAdSets.has(r._adSetId));
+      scopedBookings = scopedBookings.filter(r => _metaSelectedAdSets.has(r._utmTerm));
+    }
+  }
+
+  // Aggregation keys
+  let costIdKey, costNameKey, costParentName, bookingIdKey, colLabel;
+  if (level === 'campaign') {
+    costIdKey = '_campaignId'; costNameKey = '_campaignName'; bookingIdKey = '_utmCampaign'; colLabel = 'Campanha';
+  } else if (level === 'adset') {
+    costIdKey = '_adSetId'; costNameKey = '_adSetName'; costParentName = '_campaignName'; bookingIdKey = '_utmTerm'; colLabel = 'Ad Set';
+  } else {
+    costIdKey = '_adId'; costNameKey = '_adName'; costParentName = '_adSetName'; bookingIdKey = '_utmContent'; colLabel = 'Ad';
+  }
+
+  // Selection info
+  const info = [];
+  if ((level === 'adset' || level === 'ad') && _metaSelectedCampaigns.size > 0) {
+    info.push(_metaSelectedCampaigns.size + ' campanha' + (_metaSelectedCampaigns.size>1?'s':'') + ' selecionada' + (_metaSelectedCampaigns.size>1?'s':''));
+  }
+  if (level === 'ad' && _metaSelectedAdSets.size > 0) {
+    info.push(_metaSelectedAdSets.size + ' ad set' + (_metaSelectedAdSets.size>1?'s':'') + ' selecionado' + (_metaSelectedAdSets.size>1?'s':''));
+  }
+  const infoEl = document.getElementById('metaSelectionInfo');
+  infoEl.innerHTML = info.length ? '🔍 Filtro: ' + info.join(' · ') : (level !== 'campaign' ? '<span style="opacity:.6">Mostrando todos (nenhuma seleção)</span>' : '');
+
+  // Header
+  const hasParent = level !== 'campaign';
+  const currentSet = level === 'campaign' ? _metaSelectedCampaigns : _metaSelectedAdSets;
+  const showCheckbox = level === 'campaign' || level === 'adset';
+
+  function sth(key, label) {
+    const active = _metaSortCol === key;
+    const arrow = active ? (_metaSortDir === 'desc' ? '▼' : '▲') : '▼';
+    return `<th class="sortable${active ? ' sort-active' : ''}" onclick="metaSort('${key}')">${label}<span class="sort-icon">${arrow}</span></th>`;
+  }
+  document.getElementById('metaPerfHead').innerHTML =
+    `<tr>${showCheckbox ? '<th style="width:36px"><input type="checkbox" class="meta-cb" id="metaCbAll" onchange="metaToggleAllFromCb(this.checked)"></th>' : '<th style="width:36px"></th>'}${sth('name',colLabel)}${hasParent ? sth('parent','Campanha') : ''}${sth('spend','Spend')}${sth('bookings','Reservas')}${sth('commission','Comissão')}${sth('roas','ROAS')}${sth('cpa','CPA')}${sth('clicks','Clicks')}${sth('cpc','CPC')}</tr>`;
+
+  // Aggregate costs
+  const spendAgg = {};
+  scopedCost.forEach(r => {
+    const id = r[costIdKey];
+    if (!id) return;
+    if (!spendAgg[id]) spendAgg[id] = { name: r[costNameKey], parent: costParentName ? r[costParentName] : '', spend: 0, clicks: 0 };
+    spendAgg[id].spend += r._spend;
+    spendAgg[id].clicks += r._clicks;
+  });
+
+  // Aggregate bookings
+  const bookAgg = {};
+  scopedBookings.forEach(r => {
+    const id = r[bookingIdKey];
+    if (!id) return;
+    if (!bookAgg[id]) bookAgg[id] = { bookings: 0, commission: 0, booked: 0, bookedComm: 0 };
+    bookAgg[id].bookings++;
+    bookAgg[id].commission += r._commission;
+    if (r['Status'] === 'Booked') {
+      bookAgg[id].booked++;
+      bookAgg[id].bookedComm += r._commission;
+    }
+  });
+
+  // Build rows
+  const allIds = [...new Set([...Object.keys(spendAgg), ...Object.keys(bookAgg)])];
+  const rows = allIds.map(id => {
+    const s = spendAgg[id] || { name: id, parent: '', spend: 0, clicks: 0 };
+    const b = bookAgg[id] || { bookings: 0, commission: 0, booked: 0, bookedComm: 0 };
+    return {
+      id, name: s.name || id, parent: s.parent,
+      spend: s.spend, bookings: b.bookings, booked: b.booked,
+      commission: b.commission, bookedComm: b.bookedComm,
+      roas: s.spend > 0 ? b.bookedComm / s.spend : 0,
+      cpa: b.booked > 0 ? s.spend / b.booked : 0,
+      clicks: s.clicks, cpc: s.clicks > 0 ? s.spend / s.clicks : 0
+    };
+  }).sort((a,b) => {
+    const col = _metaSortCol;
+    const dir = _metaSortDir === 'asc' ? 1 : -1;
+    if (col === 'name' || col === 'parent') return dir * (a[col]||'').localeCompare(b[col]||'');
+    return dir * ((a[col]||0) - (b[col]||0));
+  });
+
+  window._metaCurrentRowIds = rows.map(r => r.id);
+
+  document.getElementById('tableCampaignPerf').innerHTML = rows.map(r => {
+    const selected = currentSet.has(r.id);
+    return `<tr class="${selected ? 'row-selected' : ''}">
+      <td>${showCheckbox ? `<input type="checkbox" class="meta-cb" ${selected?'checked':''} onchange="metaToggleRow('${r.id}')">` : ''}</td>
+      <td style="max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.name}">${r.name}</td>
+      ${hasParent ? `<td style="font-size:11px;color:var(--muted);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.parent}">${r.parent}</td>` : ''}
+      <td><strong>€ ${fmt(r.spend)}</strong></td>
+      <td>${r.bookings}${r.booked !== r.bookings ? ' <span style="color:var(--accent2);font-size:11px">('+r.booked+' conf.)</span>' : ''}</td>
+      <td>€ ${fmt(r.commission)}</td>
+      <td><span class="badge ${r.roas >= 1 ? 'badge-green' : r.roas > 0 ? 'badge-red' : 'badge-gray'}">${r.roas.toFixed(2)}x</span></td>
+      <td>${r.booked > 0 ? '€ '+fmt(r.cpa) : '—'}</td>
+      <td>${r.clicks}</td>
+      <td>${r.clicks > 0 ? '€ '+fmt(r.cpc) : '—'}</td>
+    </tr>`;
+  }).join('');
+
+  // Sync select all checkbox
+  const allCb = document.getElementById('metaCbAll');
+  if (allCb && rows.length) {
+    allCb.checked = rows.every(r => currentSet.has(r.id));
+    allCb.indeterminate = !allCb.checked && rows.some(r => currentSet.has(r.id));
+  }
+}
+
+// ─── TABS ────────────────────────────────────────────────────────
+function switchTab(id) {
+  document.querySelectorAll('.tab').forEach((t,i) => t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  const tabs = document.querySelectorAll('.tab');
+  const map = {general:0, google:1, campaigns:2, meta:3};
+  tabs[map[id]].classList.add('active');
+  document.getElementById('tab-'+id).classList.add('active');
+}
+
+// ─── CHARTS ─────────────────────────────────────────────────────
+const COLORS  = ['#7c5cfc','#00d4aa','#ffa94d','#ff6b6b','#4dabf7','#a9e34b','#f783ac','#74c0fc','#63e6be','#ffd43b'];
+const COLORS2 = ['#00d4aa','#7c5cfc','#ff6b6b','#ffa94d','#4dabf7','#f783ac','#a9e34b','#74c0fc','#63e6be','#ffd43b'];
+const GOOGLE_COLOR = '#4285f4';
+const gridColor = 'rgba(255,255,255,0.06)';
+const textColor = '#6b6b80';
+
+function destroyChart(id) { if (charts[id]) { charts[id].destroy(); delete charts[id]; } }
+
+function makeLineChart(id, labels, values, label, color) {
+  destroyChart(id);
+  const ctx = document.getElementById(id);
+  if (!ctx) return;
+  charts[id] = new Chart(ctx, {
+    type:'line',
+    data:{ labels, datasets:[{ label, data:values, borderColor:color, backgroundColor:color+'22', fill:true, tension:.4, pointRadius:3, pointHoverRadius:6 }] },
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{display:false} }, scales:{
+      x:{ grid:{color:gridColor}, ticks:{color:textColor, maxTicksLimit:8, maxRotation:0} },
+      y:{ grid:{color:gridColor}, ticks:{color:textColor, callback:v=>'€'+v.toFixed(0)} }
+    }}
+  });
+}
+
+function makeBarChart(id, labels, values, label, colors) {
+  destroyChart(id);
+  const ctx = document.getElementById(id);
+  if (!ctx) return;
+  charts[id] = new Chart(ctx, {
+    type:'bar',
+    data:{ labels, datasets:[{ label, data:values, backgroundColor: Array.isArray(colors) && colors.length>1 ? labels.map((_,i)=>colors[i%colors.length]) : (colors[0]||'#7c5cfc'), borderRadius:6 }] },
+    options:{ responsive:true, maintainAspectRatio:false, indexAxis:'y', plugins:{ legend:{display:false} }, scales:{
+      x:{ grid:{color:gridColor}, ticks:{color:textColor} },
+      y:{ grid:{display:false}, ticks:{color:textColor, font:{size:11}} }
+    }}
+  });
+}
+
+function makeDualLineChart(id, labels, values1, values2, label1, label2, color1, color2) {
+  destroyChart(id);
+  const ctx = document.getElementById(id);
+  if (!ctx) return;
+  charts[id] = new Chart(ctx, {
+    type:'line',
+    data:{ labels, datasets:[
+      { label:label1, data:values1, borderColor:color1, backgroundColor:color1+'22', fill:false, tension:.4, pointRadius:2, pointHoverRadius:5, borderWidth:2 },
+      { label:label2, data:values2, borderColor:color2, backgroundColor:color2+'22', fill:false, tension:.4, pointRadius:2, pointHoverRadius:5, borderWidth:2 }
+    ]},
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{labels:{color:textColor,padding:16}} }, scales:{
+      x:{ grid:{color:gridColor}, ticks:{color:textColor, maxTicksLimit:10, maxRotation:0} },
+      y:{ grid:{color:gridColor}, ticks:{color:textColor, callback:v=>'€'+v.toFixed(0)} }
+    }}
+  });
+}
+
+function makeDoughnut(id, labels, values, colors) {
+  destroyChart(id);
+  const ctx = document.getElementById(id);
+  if (!ctx) return;
+  charts[id] = new Chart(ctx, {
+    type:'doughnut',
+    data:{ labels, datasets:[{ data:values, backgroundColor: colors || COLORS, borderWidth:2, borderColor:'var(--card)' }] },
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ position:'right', labels:{color:textColor, padding:12, font:{size:11}} } }, cutout:'65%' }
+  });
+}
+
+// ─── HELPERS ────────────────────────────────────────────────────
+function sum(arr, key) { return arr.reduce((s,r) => s + (r[key]||0), 0); }
+function sumArr(arr, key) { return arr.reduce((s,r) => s + (r[key]||0), 0); }
+function avg(arr, key) { if (!arr.length) return 0; return arr.reduce((s,r) => s + (parseFloat(r[key])||0), 0) / arr.length; }
+function fmt(n) { return n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, '.'); }
+
+function groupBy(arr, key) {
+  return arr.reduce((g,r) => { const k = r[key]||'Desconhecido'; (g[k]=g[k]||[]).push(r); return g; }, {});
+}
+
+function groupByDate(arr) {
+  const g = {};
+  arr.forEach(r => {
+    if (!r._date) return;
+    const k = r._date.toLocaleDateString('pt-PT');
+    (g[k]=g[k]||[]).push(r);
+  });
+  return g;
+}
+
+function topN(obj, n) {
+  return Object.fromEntries(
+    Object.entries(obj).sort((a,b) => b[1].length - a[1].length).slice(0,n)
+  );
+}
+
+function badgeClass(status) {
+  if (!status) return 'badge-gray';
+  const s = status.toLowerCase();
+  if (s === 'booked') return 'badge-green';
+  if (s.includes('cancel')) return 'badge-red';
+  return 'badge-gray';
+}
+
+function kpi(cls, icon, label, value, sub) {
+  return `<div class="kpi-card ${cls}">
+    <div class="kpi-icon">${icon}</div>
+    <div class="kpi-label">${label}</div>
+    <div class="kpi-value">${value}</div>
+    <div class="kpi-sub">${sub}</div>
+  </div>`;
+}
+
+// ─── MATRIX ─────────────────────────────────────────────────────
+let _matrixData = [];
+let _matrixMode = 'bookings';
+
+function setMatrixMode(mode) {
+  _matrixMode = mode;
+  document.getElementById('matrixBtnBookings').classList.toggle('active', mode === 'bookings');
+  document.getElementById('matrixBtnCommission').classList.toggle('active', mode === 'commission');
+  renderMatrix(_matrixData);
+}
+
+function renderMatrix(data) {
+  _matrixData = data;
+
+  // Top booker countries (rows) — top 12 by volume
+  const bookerTotals = {};
+  const propTotals = {};
+  data.forEach(r => {
+    const b = r['Booker country'] || 'Desconhecido';
+    const p = r['Country'] || 'Desconhecido';
+    bookerTotals[b] = (bookerTotals[b] || 0) + 1;
+    propTotals[p] = (propTotals[p] || 0) + 1;
+  });
+
+  const topBookers = Object.entries(bookerTotals).sort((a,b) => b[1]-a[1]).slice(0,12).map(e => e[0]);
+  const topProps   = Object.entries(propTotals).sort((a,b) => b[1]-a[1]).slice(0,10).map(e => e[0]);
+
+  // Build pivot
+  const pivot = {};
+  topBookers.forEach(b => { pivot[b] = {}; topProps.forEach(p => { pivot[b][p] = {count:0, commission:0}; }); });
+  data.forEach(r => {
+    const b = r['Booker country'] || 'Desconhecido';
+    const p = r['Country'] || 'Desconhecido';
+    if (pivot[b] && pivot[b][p] !== undefined) {
+      pivot[b][p].count++;
+      pivot[b][p].commission += r._commission || 0;
+    }
+  });
+
+  // Get max value for heat intensity
+  const allVals = [];
+  topBookers.forEach(b => topProps.forEach(p => {
+    allVals.push(_matrixMode === 'bookings' ? pivot[b][p].count : pivot[b][p].commission);
+  }));
+  const maxVal = Math.max(...allVals, 1);
+
+  // Row totals
+  const rowTotal = {};
+  topBookers.forEach(b => {
+    rowTotal[b] = _matrixMode === 'bookings'
+      ? topProps.reduce((s,p) => s + pivot[b][p].count, 0)
+      : topProps.reduce((s,p) => s + pivot[b][p].commission, 0);
+  });
+  // Col totals
+  const colTotal = {};
+  topProps.forEach(p => {
+    colTotal[p] = _matrixMode === 'bookings'
+      ? topBookers.reduce((s,b) => s + pivot[b][p].count, 0)
+      : topBookers.reduce((s,b) => s + pivot[b][p].commission, 0);
+  });
+  const grandTotal = topBookers.reduce((s,b) => s + rowTotal[b], 0);
+
+  function cellColor(val) {
+    if (!val) return '';
+    const intensity = Math.min(val / maxVal, 1);
+    const alpha = 0.1 + intensity * 0.55;
+    return `background:rgba(124,92,252,${alpha.toFixed(2)});color:${intensity > 0.5 ? '#fff' : 'var(--text)'}`;
+  }
+
+  function fmtVal(val) {
+    if (_matrixMode === 'commission') return val > 0 ? '€' + fmt(val) : '';
+    return val > 0 ? val : '';
+  }
+
+  let html = `<table class="matrix-table">
+    <thead><tr>
+      <th class="row-header">Reservante ↓ / Prop. →</th>
+      ${topProps.map(p => `<th class="col-header">${p}</th>`).join('')}
+      <th class="col-header" style="color:var(--accent)">Total</th>
+    </tr></thead>
+    <tbody>`;
+
+  topBookers.forEach(b => {
+    html += `<tr>
+      <td class="row-label">${b}</td>
+      ${topProps.map(p => {
+        const val = _matrixMode === 'bookings' ? pivot[b][p].count : pivot[b][p].commission;
+        const style = cellColor(val);
+        return `<td><span class="matrix-cell${val ? '' : ' empty'}" style="${style}">${fmtVal(val) || '·'}</span></td>`;
+      }).join('')}
+      <td class="total-col">${_matrixMode === 'commission' ? '€'+fmt(rowTotal[b]) : rowTotal[b]}</td>
+    </tr>`;
+  });
+
+  html += `<tr class="total-row">
+    <td class="row-label">Total</td>
+    ${topProps.map(p => `<td>${_matrixMode === 'commission' ? '€'+fmt(colTotal[p]) : colTotal[p]}</td>`).join('')}
+    <td>${_matrixMode === 'commission' ? '€'+fmt(grandTotal) : grandTotal}</td>
+  </tr>`;
+
+  html += '</tbody></table>';
+  document.getElementById('matrixWrap').innerHTML = html;
+}
+
+// ─── GOOGLE MATRIX ──────────────────────────────────────────────
+let _gMatrixData = [];
+let _gMatrixMode = 'bookings';
+
+function setGoogleMatrixMode(mode) {
+  _gMatrixMode = mode;
+  document.getElementById('gMatrixBtnBookings').classList.toggle('active', mode === 'bookings');
+  document.getElementById('gMatrixBtnCommission').classList.toggle('active', mode === 'commission');
+  renderGoogleMatrix(_gMatrixData);
+}
+
+function renderGoogleMatrix(data) {
+  _gMatrixData = data;
+
+  const bookerTotals = {};
+  const propTotals = {};
+  data.forEach(r => {
+    const b = r['Booker country'] || 'Desconhecido';
+    const p = r['Country'] || 'Desconhecido';
+    bookerTotals[b] = (bookerTotals[b] || 0) + 1;
+    propTotals[p] = (propTotals[p] || 0) + 1;
+  });
+
+  const topBookers = Object.entries(bookerTotals).sort((a,b) => b[1]-a[1]).slice(0,12).map(e => e[0]);
+  const topProps   = Object.entries(propTotals).sort((a,b) => b[1]-a[1]).slice(0,10).map(e => e[0]);
+
+  const pivot = {};
+  topBookers.forEach(b => { pivot[b] = {}; topProps.forEach(p => { pivot[b][p] = {count:0, commission:0}; }); });
+  data.forEach(r => {
+    const b = r['Booker country'] || 'Desconhecido';
+    const p = r['Country'] || 'Desconhecido';
+    if (pivot[b] && pivot[b][p] !== undefined) {
+      pivot[b][p].count++;
+      pivot[b][p].commission += r._commission || 0;
+    }
+  });
+
+  const allVals = [];
+  topBookers.forEach(b => topProps.forEach(p => {
+    allVals.push(_gMatrixMode === 'bookings' ? pivot[b][p].count : pivot[b][p].commission);
+  }));
+  const maxVal = Math.max(...allVals, 1);
+
+  const rowTotal = {};
+  topBookers.forEach(b => {
+    rowTotal[b] = _gMatrixMode === 'bookings'
+      ? topProps.reduce((s,p) => s + pivot[b][p].count, 0)
+      : topProps.reduce((s,p) => s + pivot[b][p].commission, 0);
+  });
+  const colTotal = {};
+  topProps.forEach(p => {
+    colTotal[p] = _gMatrixMode === 'bookings'
+      ? topBookers.reduce((s,b) => s + pivot[b][p].count, 0)
+      : topBookers.reduce((s,b) => s + pivot[b][p].commission, 0);
+  });
+  const grandTotal = topBookers.reduce((s,b) => s + rowTotal[b], 0);
+
+  function cellColor(val) {
+    if (!val) return '';
+    const intensity = Math.min(val / maxVal, 1);
+    const alpha = 0.1 + intensity * 0.55;
+    return `background:rgba(66,133,244,${alpha.toFixed(2)});color:${intensity > 0.5 ? '#fff' : 'var(--text)'}`;
+  }
+
+  function fmtVal(val) {
+    if (_gMatrixMode === 'commission') return val > 0 ? '€' + fmt(val) : '';
+    return val > 0 ? val : '';
+  }
+
+  let html = `<table class="matrix-table">
+    <thead><tr>
+      <th class="row-header">Reservante ↓ / Prop. →</th>
+      ${topProps.map(p => `<th class="col-header">${p}</th>`).join('')}
+      <th class="col-header" style="color:#4285f4">Total</th>
+    </tr></thead>
+    <tbody>`;
+
+  topBookers.forEach(b => {
+    html += `<tr>
+      <td class="row-label">${b}</td>
+      ${topProps.map(p => {
+        const val = _gMatrixMode === 'bookings' ? pivot[b][p].count : pivot[b][p].commission;
+        const style = cellColor(val);
+        return `<td><span class="matrix-cell${val ? '' : ' empty'}" style="${style}">${fmtVal(val) || '·'}</span></td>`;
+      }).join('')}
+      <td class="total-col">${_gMatrixMode === 'commission' ? '€'+fmt(rowTotal[b]) : rowTotal[b]}</td>
+    </tr>`;
+  });
+
+  html += `<tr class="total-row">
+    <td class="row-label">Total</td>
+    ${topProps.map(p => `<td>${_gMatrixMode === 'commission' ? '€'+fmt(colTotal[p]) : colTotal[p]}</td>`).join('')}
+    <td>${_gMatrixMode === 'commission' ? '€'+fmt(grandTotal) : grandTotal}</td>
+  </tr>`;
+
+  html += '</tbody></table>';
+  document.getElementById('matrixWrapGoogle').innerHTML = html;
+}
+
+// ─── LOGIN (server-side via /api/login) ─────────────────────────
+async function doLogin() {
+  const u = document.getElementById('loginUser').value;
+  const p = document.getElementById('loginPass').value;
+  const btn = document.querySelector('.login-btn');
+  const err = document.getElementById('loginError');
+
+  if (!u || !p) { err.style.display = 'block'; return; }
+
+  btn.disabled = true;
+  btn.textContent = 'A verificar...';
+  err.style.display = 'none';
+
+  try {
+    const r = await fetch('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user: u, pass: p })
+    });
+    const data = await r.json();
+
+    if (data.ok) {
+      sessionStorage.setItem('joso_auth', '1');
+      document.getElementById('loginOverlay').style.display = 'none';
+      document.getElementById('appWrapper').style.display = 'block';
+      loadData();
+    } else {
+      err.style.display = 'block';
+      document.getElementById('loginPass').value = '';
+      setTimeout(() => err.style.display = 'none', 3000);
+    }
+  } catch(e) {
+    err.textContent = 'Erro de ligação ao servidor.';
+    err.style.display = 'block';
+  }
+
+  btn.disabled = false;
+  btn.textContent = 'Entrar';
+}
+
+function doLogout() {
+  sessionStorage.removeItem('joso_auth');
+  document.getElementById('loginUser').value = '';
+  document.getElementById('loginPass').value = '';
+  document.getElementById('appWrapper').style.display = 'none';
+  document.getElementById('loginOverlay').style.display = 'flex';
+}
+
+// ─── INIT ────────────────────────────────────────────────────────
+if (sessionStorage.getItem('joso_auth') === '1') {
+  document.getElementById('loginOverlay').style.display = 'none';
+  document.getElementById('appWrapper').style.display = 'block';
+  loadData();
+} else {
+  document.getElementById('loginUser').focus();
+}
+// ─── CHAT ────────────────────────────────────────────────────────
+let _chatMessages = [];
+let _chatOpen = false;
+
+function toggleChat() {
+  _chatOpen = !_chatOpen;
+  document.getElementById('chatPanel').classList.toggle('open', _chatOpen);
+  document.getElementById('chatFab').style.display = _chatOpen ? 'none' : 'flex';
+  if (_chatOpen && _chatMessages.length === 0) {
+    appendBotMsg('Olá! Sou o assistente do dashboard JO&SO. Posso ajudar-te a analisar os dados, dar sugestões de otimização de campanhas, ou responder a qualquer dúvida. Pergunta-me o que quiseres!');
+  }
+}
+
+function appendBotMsg(text) {
+  _chatMessages.push({ role: 'assistant', content: text });
+  renderChatMessages();
+}
+
+function renderChatMessages() {
+  const container = document.getElementById('chatMessages');
+  container.innerHTML = _chatMessages.map(m => {
+    const cls = m.role === 'user' ? 'user' : 'bot';
+    // Simple markdown-like formatting for bot messages
+    let html = m.content;
+    if (cls === 'bot') {
+      html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+      html = html.replace(/\n/g, '<br>');
+    }
+    return `<div class="chat-msg ${cls}">${html}</div>`;
+  }).join('');
+  container.scrollTop = container.scrollHeight;
+}
+
+function _filterByDays(days) {
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const cutoff = new Date(today.getTime() - (days - 1) * 86400000);
+  const bookings = allData.filter(r => r._date && r._date >= cutoff);
+  const costs = allMetaCostData.filter(r => r._date && r._date >= cutoff);
+  return { bookings, costs };
+}
+
+function _periodSummary(label, bookings, metaCosts) {
+  const meta = bookings.filter(r => r._isMeta);
+  const google = bookings.filter(r => r._isGoogle);
+  const booked = bookings.filter(r => r['Status'] === 'Booked');
+  const cancelled = bookings.filter(r => (r['Status']||'').toLowerCase().includes('cancel'));
+  const totalComm = sum(bookings, '_commission');
+  const googleComm = sum(google, '_commission');
+  const metaComm = sum(meta, '_commission');
+  const metaBooked = meta.filter(r => r['Status'] === 'Booked');
+  const metaBookedComm = sum(metaBooked, '_commission');
+  const totalSpend = metaCosts.reduce((s,r) => s + r._spend, 0);
+  const totalClicks = metaCosts.reduce((s,r) => s + r._clicks, 0);
+  const roas = totalSpend > 0 ? metaBookedComm / totalSpend : 0;
+  const cpa = metaBooked.length > 0 ? totalSpend / metaBooked.length : 0;
+
+  // Meta campaigns
+  const campSpend = {};
+  metaCosts.forEach(r => {
+    const id = r._campaignId;
+    if (!campSpend[id]) campSpend[id] = { name: r._campaignName, spend: 0, clicks: 0 };
+    campSpend[id].spend += r._spend;
+    campSpend[id].clicks += r._clicks;
+  });
+  const campBook = {};
+  meta.forEach(r => {
+    const id = r._utmCampaign;
+    if (!campBook[id]) campBook[id] = { total: 0, booked: 0, comm: 0, bookedComm: 0 };
+    campBook[id].total++;
+    campBook[id].comm += r._commission;
+    if (r['Status'] === 'Booked') { campBook[id].booked++; campBook[id].bookedComm += r._commission; }
+  });
+  const campLines = [];
+  [...new Set([...Object.keys(campSpend), ...Object.keys(campBook)])].forEach(id => {
+    const s = campSpend[id] || { name: id, spend: 0, clicks: 0 };
+    const b = campBook[id] || { total: 0, booked: 0, comm: 0, bookedComm: 0 };
+    const r = s.spend > 0 ? (b.bookedComm / s.spend).toFixed(2) : 'N/A';
+    campLines.push(`    - ${s.name || id}: Spend €${s.spend.toFixed(2)}, ${b.total} reservas (${b.booked} conf.), Comissão €${b.comm.toFixed(2)}, ROAS ${r}x`);
+  });
+
+  // Google campaigns
+  const googleCamps = groupBy(google, '_utmCampaign');
+  const googleLines = Object.entries(googleCamps).sort((a,b) => sumArr(b[1],'_commission') - sumArr(a[1],'_commission')).slice(0,8)
+    .map(([c,v]) => `    - ${c}: ${v.length} reservas, €${sumArr(v,'_commission').toFixed(2)} comissão`);
+
+  // Top countries
+  const byCountry = groupBy(bookings, 'Country');
+  const topCountries = Object.entries(byCountry).sort((a,b) => b[1].length - a[1].length).slice(0,5)
+    .map(([c,v]) => `  ${c}: ${v.length} reservas, €${sumArr(v,'_commission').toFixed(2)}`);
+
+  return `═══ ${label} ═══
+  Total: ${bookings.length} reservas | ${booked.length} confirmadas | ${cancelled.length} canceladas | Comissão: €${totalComm.toFixed(2)}
+  Taxa cancelamento: ${bookings.length ? (cancelled.length/bookings.length*100).toFixed(1) : 0}%
+  Google Ads: ${google.length} reservas | €${googleComm.toFixed(2)} comissão
+  Campanhas Google:
+${googleLines.join('\n')}
+  Meta Ads: ${meta.length} reservas | €${metaComm.toFixed(2)} comissão
+  Meta Spend: €${totalSpend.toFixed(2)} | Clicks: ${totalClicks} | ROAS: ${roas.toFixed(2)}x | CPA: €${cpa.toFixed(2)}
+  Campanhas Meta:
+${campLines.join('\n')}
+  Top Países: ${topCountries.join(' | ')}`;
+}
+
+function gatherDashboardContext() {
+  const sections = [];
+
+  // Current filter info
+  const preset = currentPreset === 'custom'
+    ? `Personalizado: ${document.getElementById('dateFrom').value} a ${document.getElementById('dateTo').value}`
+    : currentPreset;
+  sections.push(`PERÍODO SELECIONADO NO DASHBOARD: ${preset}`);
+
+  // Multiple period analysis
+  const periods = [
+    { label: 'ÚLTIMOS 7 DIAS', days: 7 },
+    { label: 'ÚLTIMOS 14 DIAS', days: 14 },
+    { label: 'ÚLTIMOS 30 DIAS', days: 30 },
+    { label: 'TOTAL (TODOS OS DADOS)', days: 99999 }
+  ];
+
+  periods.forEach(p => {
+    const { bookings, costs } = _filterByDays(p.days);
+    if (bookings.length > 0 || costs.length > 0) {
+      sections.push(_periodSummary(p.label, bookings, costs));
+    }
+  });
+
+  return sections.join('\n\n');
+}
+
+async function sendChatMessage() {
+  const input = document.getElementById('chatInput');
+  const text = input.value.trim();
+  if (!text) return;
+
+  input.value = '';
+  _chatMessages.push({ role: 'user', content: text });
+  renderChatMessages();
+
+  // Show typing indicator
+  const typingIdx = _chatMessages.length;
+  _chatMessages.push({ role: 'assistant', content: 'A pensar...' });
+  renderChatMessages();
+
+  const btn = document.getElementById('chatSend');
+  btn.disabled = true;
+
+  try {
+    const apiMessages = _chatMessages.slice(0, -1).filter(m => m.role === 'user' || m.role === 'assistant');
+    const context = gatherDashboardContext();
+
+    const r = await fetch('/api/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messages: apiMessages, context })
+    });
+    const data = await r.json();
+
+    _chatMessages[typingIdx] = { role: 'assistant', content: data.reply || data.error || 'Erro desconhecido.' };
+  } catch(e) {
+    _chatMessages[typingIdx] = { role: 'assistant', content: 'Erro de ligação. Tenta novamente.' };
+  }
+
+  btn.disabled = false;
+  renderChatMessages();
+}
+</script>
+
+<!-- CHAT POPUP -->
+<button class="chat-fab" id="chatFab" onclick="toggleChat()">
+  💬
+</button>
+
+<div class="chat-panel" id="chatPanel">
+  <div class="chat-header">
+    <div class="chat-header-title">💬 Assistente JO&SO</div>
+    <button class="chat-close" onclick="toggleChat()">✕</button>
+  </div>
+  <div class="chat-messages" id="chatMessages"></div>
+  <div class="chat-input-wrap">
+    <textarea class="chat-input" id="chatInput" placeholder="Faz uma pergunta sobre os dados..." rows="1" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChatMessage()}"></textarea>
+    <button class="chat-send" id="chatSend" onclick="sendChatMessage()">➤</button>
+  </div>
+</div>
+
+</body>
+</html>
