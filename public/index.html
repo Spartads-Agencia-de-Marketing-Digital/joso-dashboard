@@ -363,10 +363,11 @@
         <button class="brand-btn" id="gBrandJoso" onclick="setGoogleBrand('joso')">JO&amp;SO</button>
         <button class="brand-btn" id="gBrandBbh" onclick="setGoogleBrand('bbh')">BBH</button>
       </div>
-      <span style="font-size:12px;color:var(--muted);font-weight:600;white-space:nowrap;">🎯 Campanha</span>
-      <select id="filterGoogleCampaign" onchange="applyGoogleCampaignFilter()" style="min-width:260px;max-width:480px;">
-        <option value="">Todas as campanhas</option>
-      </select>
+      <span style="font-size:12px;color:var(--muted);font-weight:600;white-space:nowrap;">🎯 Campanhas</span>
+      <div class="ms-wrap">
+        <button class="ms-btn" id="msGoogleCampBtn" onclick="msToggle('msGoogleCamp')">Todas <span>▾</span></button>
+        <div class="ms-dropdown" id="msGoogleCampDropdown"></div>
+      </div>
       <span id="googleCampaignCount" style="font-size:12px;color:var(--muted);margin-left:4px;"></span>
     </div>
     <div class="kpi-grid" id="kpi-google"></div>
@@ -836,10 +837,10 @@ function applyGoogleCampaignFilter() {
     const bbh = _googleBrand === 'bbh';
     data = data.filter(r => bbh ? isBBH(r._utmCampaign) : !isBBH(r._utmCampaign));
   }
-  const camp = document.getElementById('filterGoogleCampaign').value;
-  const filtered = camp ? data.filter(r => r._utmCampaign === camp) : data;
+  const selected = _msState.msGoogleCamp.selected;
+  const filtered = selected.size > 0 ? data.filter(r => selected.has(r._utmCampaign)) : data;
   const countEl = document.getElementById('googleCampaignCount');
-  if (countEl) countEl.textContent = (camp || _googleBrand) ? `${filtered.length} reservas` : '';
+  if (countEl) countEl.textContent = (selected.size > 0 || _googleBrand) ? `${filtered.length} reservas` : '';
   renderGoogleCharts(filtered);
 }
 
@@ -847,23 +848,10 @@ function renderGoogle(data) {
   _googleBaseData = data;
   _googleBrand = '';
   ['gBrandAll','gBrandJoso','gBrandBbh'].forEach((id,i) => document.getElementById(id).classList.toggle('active', i===0));
-
-  // Populate campaign dropdown preserving current selection
-  const sel = document.getElementById('filterGoogleCampaign');
-  const prev = sel.value;
+  _msState.msGoogleCamp.selected.clear();
   const campaigns = [...new Set(data.map(r => r._utmCampaign).filter(Boolean))].sort();
-  sel.innerHTML = '<option value="">Todas as campanhas</option>' +
-    campaigns.map(c => `<option value="${c}"${c===prev?' selected':''}>${c}</option>`).join('');
-
-  // If previously selected campaign no longer exists in new data, reset
-  const activeCamp = campaigns.includes(prev) ? prev : '';
-  if (!campaigns.includes(prev)) sel.value = '';
-
-  const filtered = activeCamp ? data.filter(r => r._utmCampaign === activeCamp) : data;
-  const countEl = document.getElementById('googleCampaignCount');
-  if (countEl) countEl.textContent = activeCamp ? `${filtered.length} reservas` : '';
-
-  renderGoogleCharts(filtered);
+  msPopulate('msGoogleCamp', campaigns);
+  renderGoogleCharts(data);
 }
 
 function renderGoogleCharts(data) {
@@ -967,7 +955,10 @@ function setGoogleBrand(brand) {
   _googleBrand = brand;
   ['gBrandAll','gBrandJoso','gBrandBbh'].forEach(id => document.getElementById(id).classList.remove('active'));
   document.getElementById(brand === '' ? 'gBrandAll' : brand === 'joso' ? 'gBrandJoso' : 'gBrandBbh').classList.add('active');
-  document.getElementById('filterGoogleCampaign').value = '';
+  _msState.msGoogleCamp.selected.clear();
+  const all = [...new Set(_googleBaseData.map(r => r._utmCampaign).filter(Boolean))].sort();
+  const opts = brand ? all.filter(c => brand === 'bbh' ? isBBH(c) : !isBBH(c)) : all;
+  msPopulate('msGoogleCamp', opts);
   applyGoogleCampaignFilter();
 }
 
@@ -1540,9 +1531,10 @@ function kpi(cls, icon, label, value, sub) {
 
 // ─── MULTI-SELECT ────────────────────────────────────────────────
 const _msState = {
-  msCountry: { selected: new Set(), options: [], onChange: () => applyFilters() },
-  msBooker:  { selected: new Set(), options: [], onChange: () => applyFilters() },
-  msCamp:    { selected: new Set(), options: [], onChange: () => applyCampTabFilter() }
+  msCountry:    { selected: new Set(), options: [], onChange: () => applyFilters() },
+  msBooker:     { selected: new Set(), options: [], onChange: () => applyFilters() },
+  msCamp:       { selected: new Set(), options: [], onChange: () => applyCampTabFilter() },
+  msGoogleCamp: { selected: new Set(), options: [], onChange: () => applyGoogleCampaignFilter() }
 };
 
 function msToggle(id) {
