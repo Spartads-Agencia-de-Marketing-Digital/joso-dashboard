@@ -133,6 +133,34 @@
   .logout-btn:hover { background:rgba(255,107,107,.25); }
   @media(max-width:480px) { .login-box { padding:32px 24px; margin:16px; } }
 
+  /* CANCEL RATE BAR */
+  .cancel-bar-card { background:var(--card); border:1px solid var(--border); border-radius:var(--radius); padding:18px 20px; margin-bottom:24px; }
+  .cancel-bar-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; flex-wrap:wrap; gap:8px; }
+  .cancel-bar-label { font-size:13px; font-weight:700; }
+  .cancel-bar-track { height:10px; background:var(--bg3); border-radius:10px; position:relative; margin-top:4px; }
+  .cancel-bar-fill { height:100%; border-radius:10px; transition:width .6s ease; }
+  .cancel-bar-marker { position:absolute; top:-6px; bottom:-6px; width:2px; background:var(--accent4); border-radius:2px; z-index:1; }
+  .cancel-bar-marker::after { content:'Meta: 33%'; position:absolute; top:-20px; left:50%; transform:translateX(-50%); font-size:10px; color:var(--accent4); white-space:nowrap; font-weight:600; background:var(--card); padding:1px 5px; border-radius:3px; }
+
+  /* MULTI-SELECT */
+  .ms-wrap { position:relative; display:inline-block; }
+  .ms-btn { background:var(--bg3); border:1px solid var(--border); color:var(--text); padding:8px 12px; border-radius:8px; font-size:13px; font-family:'Inter',sans-serif; cursor:pointer; min-width:110px; display:flex; align-items:center; justify-content:space-between; gap:8px; white-space:nowrap; transition:border-color .2s; }
+  .ms-btn:hover { border-color:var(--accent); }
+  .ms-btn.has-selection { border-color:var(--accent); color:var(--accent); }
+  .ms-dropdown { position:absolute; top:calc(100% + 4px); left:0; background:var(--bg3); border:1px solid var(--border); border-radius:10px; padding:6px; min-width:210px; max-height:260px; overflow-y:auto; z-index:2000; box-shadow:0 8px 32px rgba(0,0,0,.5); display:none; }
+  .ms-dropdown.open { display:block; }
+  .ms-item { display:flex; align-items:center; gap:8px; padding:7px 10px; border-radius:7px; cursor:pointer; font-size:13px; transition:background .15s; }
+  .ms-item:hover { background:rgba(124,92,252,.1); }
+  .ms-item input[type=checkbox] { accent-color:var(--accent); width:14px; height:14px; cursor:pointer; flex-shrink:0; }
+  .ms-clear { text-align:center; font-size:11px; color:var(--muted); padding:6px 10px; border-top:1px solid var(--border); margin-top:4px; cursor:pointer; }
+  .ms-clear:hover { color:var(--accent); }
+
+  /* BRAND TOGGLE */
+  .brand-toggle { display:flex; gap:4px; }
+  .brand-btn { background:var(--bg3); border:1px solid var(--border); color:var(--muted); padding:7px 14px; border-radius:7px; font-size:12px; font-weight:600; cursor:pointer; transition:all .2s; white-space:nowrap; }
+  .brand-btn:hover { color:var(--text); border-color:rgba(255,255,255,.15); }
+  .brand-btn.active { background:var(--accent); border-color:var(--accent); color:#fff; }
+
   /* MATRIX TABLE */
   .matrix-wrap { overflow-x:auto; }
   .matrix-table { border-collapse:collapse; font-size:12px; min-width:100%; }
@@ -243,15 +271,17 @@
   </div>
   <div class="filter-group">
     <span class="filter-label">🌍 País Prop.</span>
-    <select id="filterCountry" onchange="applyFilters()">
-      <option value="">Todos</option>
-    </select>
+    <div class="ms-wrap">
+      <button class="ms-btn" id="msCountryBtn" onclick="msToggle('msCountry')">Todos <span>▾</span></button>
+      <div class="ms-dropdown" id="msCountryDropdown"></div>
+    </div>
   </div>
   <div class="filter-group">
     <span class="filter-label">🧳 País Reserva</span>
-    <select id="filterBookerCountry" onchange="applyFilters()">
-      <option value="">Todos</option>
-    </select>
+    <div class="ms-wrap">
+      <button class="ms-btn" id="msBookerBtn" onclick="msToggle('msBooker')">Todos <span>▾</span></button>
+      <div class="ms-dropdown" id="msBookerDropdown"></div>
+    </div>
   </div>
 </div>
 
@@ -271,6 +301,7 @@
   <!-- TAB: GERAL -->
   <div class="tab-content" id="tab-general">
     <div class="kpi-grid" id="kpi-general"></div>
+    <div id="cancelBarWrap"></div>
     <div class="charts-grid">
       <div class="chart-card">
         <div class="chart-title">Comissões por Dia</div>
@@ -326,6 +357,12 @@
   <!-- TAB: GOOGLE -->
   <div class="tab-content" id="tab-google">
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:14px 20px;margin-bottom:20px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+      <span style="font-size:12px;color:var(--muted);font-weight:600;white-space:nowrap;">🌐 Marca</span>
+      <div class="brand-toggle">
+        <button class="brand-btn active" id="gBrandAll" onclick="setGoogleBrand('')">Todas</button>
+        <button class="brand-btn" id="gBrandJoso" onclick="setGoogleBrand('joso')">JO&amp;SO</button>
+        <button class="brand-btn" id="gBrandBbh" onclick="setGoogleBrand('bbh')">BBH</button>
+      </div>
       <span style="font-size:12px;color:var(--muted);font-weight:600;white-space:nowrap;">🎯 Campanha</span>
       <select id="filterGoogleCampaign" onchange="applyGoogleCampaignFilter()" style="min-width:260px;max-width:480px;">
         <option value="">Todas as campanhas</option>
@@ -378,10 +415,17 @@
   <!-- TAB: CAMPANHAS GOOGLE -->
   <div class="tab-content" id="tab-campaigns">
     <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:14px 20px;margin-bottom:20px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
-      <span style="font-size:12px;color:var(--muted);font-weight:600;white-space:nowrap;">🎯 Filtrar Campanha</span>
-      <select id="filterCampTab" onchange="applyCampTabFilter()" style="min-width:260px;max-width:480px;">
-        <option value="">Todas as campanhas</option>
-      </select>
+      <span style="font-size:12px;color:var(--muted);font-weight:600;white-space:nowrap;">🌐 Marca</span>
+      <div class="brand-toggle">
+        <button class="brand-btn active" id="campBrandAll" onclick="setCampBrand('')">Todas</button>
+        <button class="brand-btn" id="campBrandJoso" onclick="setCampBrand('joso')">JO&amp;SO</button>
+        <button class="brand-btn" id="campBrandBbh" onclick="setCampBrand('bbh')">BBH</button>
+      </div>
+      <span style="font-size:12px;color:var(--muted);font-weight:600;white-space:nowrap;">🎯 Campanhas</span>
+      <div class="ms-wrap">
+        <button class="ms-btn" id="msCampBtn" onclick="msToggle('msCamp')">Todas <span>▾</span></button>
+        <div class="ms-dropdown" id="msCampDropdown"></div>
+      </div>
       <span id="campTabCount" style="font-size:12px;color:var(--muted);margin-left:4px;"></span>
     </div>
     <div class="kpi-grid" id="kpi-campaigns"></div>
@@ -390,7 +434,7 @@
       <div style="font-size:12px;color:var(--muted);margin-bottom:14px">Desempenho de cada campanha Google Ads com dados de custo cruzados</div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Campanha</th><th>Nº Reservas</th><th>Comissão</th><th>Custo</th><th>Conversões</th><th>Valor Conv.</th><th>ROAS</th><th>Custo / Reserva</th></tr></thead>
+          <thead id="campTableHead"><tr><th>Campanha</th><th>Nº Reservas</th><th>Comissão</th><th>Custo</th><th>Conversões</th><th>Profit</th><th>ROAS</th><th>Custo / Reserva</th></tr></thead>
           <tbody id="tableCampaigns"></tbody>
         </table>
       </div>
@@ -400,7 +444,7 @@
       <div style="font-size:12px;color:var(--muted);margin-bottom:14px">Desempenho por ad group — cruzamento entre conjuntos de anúncios e reservas geradas</div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Conjunto de Anúncios</th><th>Campanha</th><th>Nº Reservas</th><th>Comissão</th><th>Custo</th><th>Conversões</th><th>Valor Conv.</th><th>ROAS</th><th>Custo / Reserva</th></tr></thead>
+          <thead id="agTableHead"><tr><th>Conjunto de Anúncios</th><th>Campanha</th><th>Nº Reservas</th><th>Comissão</th><th>Custo</th><th>Conversões</th><th>Profit</th><th>ROAS</th><th>Custo / Reserva</th></tr></thead>
           <tbody id="tableAdGroups"></tbody>
         </table>
       </div>
@@ -554,6 +598,7 @@ function parseMetaCostCSV(csv) {
     headers.forEach((h, i) => obj[h.trim()] = (vals[i] || '').trim());
     obj._spend = parseFloat((obj['Amount Spent'] || '0').replace(',','.')) || 0;
     obj._clicks = parseInt(obj['Link Clicks']) || 0;
+    obj._impressions = parseInt((obj['Impressions'] || '0').replace(/[.,]/g, m => m === '.' ? '' : '.')) || parseInt((obj['Impressions'] || '0').replace(',','')) || 0;
     obj._date = obj['Day'] ? new Date(obj['Day']) : null;
     obj._campaignId = obj['Campaign ID'] || '';
     obj._campaignName = obj['Campaign Name'] || '';
@@ -646,14 +691,14 @@ function _dateFilter(d, today) {
 function applyFilters() {
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const country = document.getElementById('filterCountry').value;
-  const booker = document.getElementById('filterBookerCountry').value;
+  const countryFilter = _msState.msCountry.selected;
+  const bookerFilter = _msState.msBooker.selected;
 
   filteredData = allData.filter(row => {
     if (!row._date) return false;
     if (!_dateFilter(row._date, today)) return false;
-    if (country && row['Country'] !== country) return false;
-    if (booker && row['Booker country'] !== booker) return false;
+    if (countryFilter.size > 0 && !countryFilter.has(row['Country'])) return false;
+    if (bookerFilter.size > 0 && !bookerFilter.has(row['Booker country'])) return false;
     return true;
   });
 
@@ -673,8 +718,8 @@ function applyFilters() {
 function populateFilters() {
   const countries = [...new Set(allData.map(r => r['Country']).filter(Boolean))].sort();
   const bookers = [...new Set(allData.map(r => r['Booker country']).filter(Boolean))].sort();
-  fillSelect('filterCountry', countries);
-  fillSelect('filterBookerCountry', bookers);
+  msPopulate('msCountry', countries);
+  msPopulate('msBooker', bookers);
 }
 
 function fillSelect(id, opts) {
@@ -717,6 +762,27 @@ function renderGeneral(data) {
     ${kpi('c5','🌙','Avg. Noites',avgStay.toFixed(1),'Duração média')}
     ${kpi('c3','📉','Taxa Cancelamento',cancelRate.toFixed(1)+'%','Canceladas / Total')}
   `;
+
+  // Cancellation rate progress bar
+  const target33 = 33;
+  const barCol = cancelRate <= target33 * 0.6 ? 'var(--accent2)' : cancelRate <= target33 ? 'var(--accent4)' : 'var(--accent3)';
+  const fillPct = Math.min(cancelRate, 100).toFixed(1);
+  document.getElementById('cancelBarWrap').innerHTML = `
+    <div class="cancel-bar-card">
+      <div class="cancel-bar-header">
+        <div class="cancel-bar-label">Taxa de Cancelamento</div>
+        <div style="font-size:14px;font-weight:700;color:${barCol}">${cancelRate.toFixed(1)}% <span style="font-weight:400;font-size:12px;color:var(--muted)">${cancelled.length} canceladas de ${data.length} reservas</span></div>
+      </div>
+      <div class="cancel-bar-track">
+        <div class="cancel-bar-fill" style="width:${fillPct}%;background:${barCol}"></div>
+        <div class="cancel-bar-marker" style="left:${target33}%"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-top:8px;font-size:11px;color:var(--muted)">
+        <span>0%</span>
+        <span style="color:${cancelRate <= target33 ? 'var(--accent2)' : 'var(--accent3)'};font-weight:600">${cancelRate <= target33 ? '✓ Dentro do objetivo (≤33%)' : '⚠ Acima do objetivo (>33%)'}</span>
+        <span>100%</span>
+      </div>
+    </div>`;
 
   // Revenue over time
   const byDay = groupByDate(data);
@@ -765,15 +831,22 @@ function renderGeneral(data) {
 let _googleBaseData = [];
 
 function applyGoogleCampaignFilter() {
+  let data = _googleBaseData;
+  if (_googleBrand) {
+    const bbh = _googleBrand === 'bbh';
+    data = data.filter(r => bbh ? isBBH(r._utmCampaign) : !isBBH(r._utmCampaign));
+  }
   const camp = document.getElementById('filterGoogleCampaign').value;
-  const filtered = camp ? _googleBaseData.filter(r => r._utmCampaign === camp) : _googleBaseData;
+  const filtered = camp ? data.filter(r => r._utmCampaign === camp) : data;
   const countEl = document.getElementById('googleCampaignCount');
-  if (countEl) countEl.textContent = camp ? `${filtered.length} reservas` : '';
+  if (countEl) countEl.textContent = (camp || _googleBrand) ? `${filtered.length} reservas` : '';
   renderGoogleCharts(filtered);
 }
 
 function renderGoogle(data) {
   _googleBaseData = data;
+  _googleBrand = '';
+  ['gBrandAll','gBrandJoso','gBrandBbh'].forEach((id,i) => document.getElementById(id).classList.toggle('active', i===0));
 
   // Populate campaign dropdown preserving current selection
   const sel = document.getElementById('filterGoogleCampaign');
@@ -858,34 +931,70 @@ function renderGoogleCharts(data) {
 
 // ─── CAMPAIGNS TAB ──────────────────────────────────────────────
 let _campTabBaseData = [];
+let _campBrand = '';
+let _googleBrand = '';
+let _campSortCol = 'commission';
+let _campSortDir = 'desc';
+let _agSortCol = 'commission';
+let _agSortDir = 'desc';
+
+function isBBH(name) { return (name || '').toLowerCase().includes('bbh'); }
+
+function campSort(col) {
+  if (_campSortCol === col) _campSortDir = _campSortDir === 'desc' ? 'asc' : 'desc';
+  else { _campSortCol = col; _campSortDir = col === 'name' ? 'asc' : 'desc'; }
+  applyCampTabFilter();
+}
+
+function agSort(col) {
+  if (_agSortCol === col) _agSortDir = _agSortDir === 'desc' ? 'asc' : 'desc';
+  else { _agSortCol = col; _agSortDir = (col === 'adGroup' || col === 'campaign') ? 'asc' : 'desc'; }
+  applyCampTabFilter();
+}
+
+function setCampBrand(brand) {
+  _campBrand = brand;
+  ['campBrandAll','campBrandJoso','campBrandBbh'].forEach(id => document.getElementById(id).classList.remove('active'));
+  document.getElementById(brand === '' ? 'campBrandAll' : brand === 'joso' ? 'campBrandJoso' : 'campBrandBbh').classList.add('active');
+  _msState.msCamp.selected.clear();
+  const all = [...new Set(_campTabBaseData.map(r => r._utmCampaign).filter(Boolean))].sort();
+  const opts = brand ? all.filter(c => brand === 'bbh' ? isBBH(c) : !isBBH(c)) : all;
+  msPopulate('msCamp', opts);
+  applyCampTabFilter();
+}
+
+function setGoogleBrand(brand) {
+  _googleBrand = brand;
+  ['gBrandAll','gBrandJoso','gBrandBbh'].forEach(id => document.getElementById(id).classList.remove('active'));
+  document.getElementById(brand === '' ? 'gBrandAll' : brand === 'joso' ? 'gBrandJoso' : 'gBrandBbh').classList.add('active');
+  document.getElementById('filterGoogleCampaign').value = '';
+  applyGoogleCampaignFilter();
+}
 
 function applyCampTabFilter() {
-  const camp = document.getElementById('filterCampTab').value;
-  const filtered = camp ? _campTabBaseData.filter(r => r._utmCampaign === camp) : _campTabBaseData;
+  let data = _campTabBaseData;
+  if (_campBrand) {
+    const bbh = _campBrand === 'bbh';
+    data = data.filter(r => bbh ? isBBH(r._utmCampaign) : !isBBH(r._utmCampaign));
+  }
+  const selected = _msState.msCamp.selected;
+  if (selected.size > 0) data = data.filter(r => selected.has(r._utmCampaign));
   const countEl = document.getElementById('campTabCount');
-  if (countEl) countEl.textContent = camp ? `${filtered.length} reservas` : '';
-  renderCampaignTables(filtered, camp);
+  if (countEl) countEl.textContent = (selected.size > 0 || _campBrand) ? `${data.length} reservas` : '';
+  renderCampaignTables(data, selected.size > 0 ? [...selected] : null, _campBrand);
 }
 
 function renderCampaigns(googleData) {
   _campTabBaseData = googleData;
-
-  const sel = document.getElementById('filterCampTab');
-  const prev = sel.value;
+  _campBrand = '';
+  ['campBrandAll','campBrandJoso','campBrandBbh'].forEach((id,i) => document.getElementById(id).classList.toggle('active', i===0));
+  _msState.msCamp.selected.clear();
   const campaigns = [...new Set(googleData.map(r => r._utmCampaign).filter(Boolean))].sort();
-  sel.innerHTML = '<option value="">Todas as campanhas</option>' +
-    campaigns.map(c => `<option value="${c}"${c===prev?' selected':''}>${c}</option>`).join('');
-  const activeCamp = campaigns.includes(prev) ? prev : '';
-  if (!campaigns.includes(prev)) sel.value = '';
-
-  const filtered = activeCamp ? googleData.filter(r => r._utmCampaign === activeCamp) : googleData;
-  const countEl = document.getElementById('campTabCount');
-  if (countEl) countEl.textContent = activeCamp ? `${filtered.length} reservas` : '';
-
-  renderCampaignTables(filtered, activeCamp);
+  msPopulate('msCamp', campaigns);
+  renderCampaignTables(googleData, null, '');
 }
 
-function renderCampaignTables(data, selectedCamp) {
+function renderCampaignTables(data, selectedCamps, activeBrand) {
   // Direct match via Utm Campaign column (no normalization needed)
   const costByCamp = {};   // utmCampaign → { cost, conversions, convValue, displayName }
   const costByAg = {};     // "utmCamp|||utmAdgroup" → { cost, conversions, convValue, displayCamp, displayAg }
@@ -911,11 +1020,16 @@ function renderCampaignTables(data, selectedCamp) {
   const allSlugs = new Set([...Object.keys(costByCamp), ...Object.keys(bookByCampaign)]);
 
   const campRows = [];
-  let totalBookings = 0, totalCommission = 0, totalCost = 0, totalConv = 0, totalConvVal = 0;
+  let totalBookings = 0, totalCommission = 0, totalCost = 0, totalConv = 0, totalConvVal = 0, totalProfit = 0;
 
   allSlugs.forEach(slug => {
     if (!slug || slug === 'Desconhecido') return;
-    if (selectedCamp && slug !== selectedCamp) return;
+    if (selectedCamps) {
+      if (!selectedCamps.includes(slug)) return;
+    } else if (activeBrand) {
+      const bbh = activeBrand === 'bbh';
+      if (bbh ? !isBBH(slug) : isBBH(slug)) return;
+    }
 
     const bookRows = bookByCampaign[slug] || [];
     const costEntry = costByCamp[slug];
@@ -926,18 +1040,24 @@ function renderCampaignTables(data, selectedCamp) {
     const conversions = costEntry ? costEntry.conversions : 0;
     const convValue = costEntry ? costEntry.convValue : 0;
     const displayName = costEntry ? costEntry.displayName : slug;
+    const profit = commission - cost;
     const roas = cost > 0 ? commission / cost : 0;
     const cpr = nBookings > 0 && cost > 0 ? cost / nBookings : 0;
 
-    campRows.push({ name: displayName, utmName: slug, nBookings, commission, cost, conversions, convValue, roas, cpr });
+    campRows.push({ name: displayName, utmName: slug, nBookings, commission, cost, conversions, convValue, profit, roas, cpr });
     totalBookings += nBookings;
     totalCommission += commission;
     totalCost += cost;
     totalConv += conversions;
     totalConvVal += convValue;
+    totalProfit += profit;
   });
 
-  campRows.sort((a, b) => b.commission - a.commission);
+  campRows.sort((a, b) => {
+    const dir = _campSortDir === 'asc' ? 1 : -1;
+    if (_campSortCol === 'name') return dir * (a.name||'').localeCompare(b.name||'');
+    return dir * ((a[_campSortCol]||0) - (b[_campSortCol]||0));
+  });
 
   const totalROAS = totalCost > 0 ? totalCommission / totalCost : 0;
   const totalCPR = totalBookings > 0 && totalCost > 0 ? totalCost / totalBookings : 0;
@@ -951,16 +1071,25 @@ function renderCampaignTables(data, selectedCamp) {
     ${kpi('c5','🔄','Conversões Google', totalConv.toFixed(0),'Valor: € '+fmt(totalConvVal))}
   `;
 
+  // Dynamic sortable thead for campaigns
+  function sCampTh(key, label) {
+    const active = _campSortCol === key;
+    const arrow = active ? (_campSortDir === 'desc' ? '▼' : '▲') : '▼';
+    return `<th class="sortable${active?' sort-active':''}" onclick="campSort('${key}')">${label}<span class="sort-icon">${arrow}</span></th>`;
+  }
+  document.getElementById('campTableHead').innerHTML = `<tr>${sCampTh('name','Campanha')}${sCampTh('nBookings','Nº Reservas')}${sCampTh('commission','Comissão')}${sCampTh('cost','Custo')}${sCampTh('conversions','Conversões')}${sCampTh('profit','Profit')}${sCampTh('roas','ROAS')}${sCampTh('cpr','Custo / Reserva')}</tr>`;
+
   // Campaign table
   document.getElementById('tableCampaigns').innerHTML = campRows.map(r => {
     const roasColor = r.roas >= 2 ? 'var(--accent2)' : r.roas >= 1 ? 'var(--accent4)' : 'var(--accent3)';
+    const profitColor = r.profit >= 0 ? 'var(--accent2)' : 'var(--accent3)';
     return `<tr>
       <td><strong>${r.name}</strong><div style="font-size:10px;color:var(--muted);margin-top:2px">${r.utmName}</div></td>
       <td><strong>${r.nBookings}</strong></td>
       <td><strong>€ ${fmt(r.commission)}</strong></td>
       <td>€ ${fmt(r.cost)}</td>
       <td>${r.conversions.toFixed(1)}</td>
-      <td>€ ${fmt(r.convValue)}</td>
+      <td style="color:${profitColor};font-weight:700">€ ${fmt(r.profit)}</td>
       <td><span style="color:${roasColor};font-weight:700">${r.roas.toFixed(2)}x</span></td>
       <td>${r.nBookings > 0 && r.cost > 0 ? '€ '+fmt(r.cpr) : '—'}</td>
     </tr>`;
@@ -970,7 +1099,7 @@ function renderCampaignTables(data, selectedCamp) {
       <td><strong>€ ${fmt(totalCommission)}</strong></td>
       <td><strong>€ ${fmt(totalCost)}</strong></td>
       <td><strong>${totalConv.toFixed(1)}</strong></td>
-      <td><strong>€ ${fmt(totalConvVal)}</strong></td>
+      <td style="color:${totalProfit >= 0 ? 'var(--accent2)' : 'var(--accent3)'};font-weight:700"><strong>€ ${fmt(totalProfit)}</strong></td>
       <td><span style="color:${totalROAS >= 2 ? 'var(--accent2)' : totalROAS >= 1 ? 'var(--accent4)' : 'var(--accent3)'};font-weight:700">${totalROAS.toFixed(2)}x</span></td>
       <td><strong>${totalCPR > 0 ? '€ '+fmt(totalCPR) : '—'}</strong></td>
     </tr>` : '');
@@ -1005,11 +1134,25 @@ function renderCampaignTables(data, selectedCamp) {
     const displayCamp = costInfo ? costInfo.displayCamp : obj.utmCampaign;
     const roas = cost > 0 ? commission / cost : 0;
     const cpr = nBookings > 0 && cost > 0 ? cost / nBookings : 0;
-    return { adGroup: displayAg, adGroupUtm: obj.agSlug, campaign: displayCamp, nBookings, commission, cost, conversions, convValue, roas, cpr };
-  }).sort((a, b) => b.commission - a.commission);
+    const profit = commission - cost;
+    return { adGroup: displayAg, adGroupUtm: obj.agSlug, campaign: displayCamp, nBookings, commission, cost, conversions, convValue, profit, roas, cpr };
+  }).sort((a, b) => {
+    const dir = _agSortDir === 'asc' ? 1 : -1;
+    if (_agSortCol === 'adGroup' || _agSortCol === 'campaign') return dir * (a[_agSortCol]||'').localeCompare(b[_agSortCol]||'');
+    return dir * ((a[_agSortCol]||0) - (b[_agSortCol]||0));
+  });
+
+  // Dynamic sortable thead for ad groups
+  function sAgTh(key, label) {
+    const active = _agSortCol === key;
+    const arrow = active ? (_agSortDir === 'desc' ? '▼' : '▲') : '▼';
+    return `<th class="sortable${active?' sort-active':''}" onclick="agSort('${key}')">${label}<span class="sort-icon">${arrow}</span></th>`;
+  }
+  document.getElementById('agTableHead').innerHTML = `<tr>${sAgTh('adGroup','Conjunto de Anúncios')}${sAgTh('campaign','Campanha')}${sAgTh('nBookings','Nº Reservas')}${sAgTh('commission','Comissão')}${sAgTh('cost','Custo')}${sAgTh('conversions','Conversões')}${sAgTh('profit','Profit')}${sAgTh('roas','ROAS')}${sAgTh('cpr','Custo / Reserva')}</tr>`;
 
   document.getElementById('tableAdGroups').innerHTML = adGroupRows.map(r => {
     const roasColor = r.roas >= 2 ? 'var(--accent2)' : r.roas >= 1 ? 'var(--accent4)' : 'var(--accent3)';
+    const profitColor = r.profit >= 0 ? 'var(--accent2)' : 'var(--accent3)';
     return `<tr>
       <td><strong>${r.adGroup}</strong><div style="font-size:10px;color:var(--muted);margin-top:2px">${r.adGroupUtm}</div></td>
       <td style="font-size:11px;color:var(--muted);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.campaign}">${r.campaign.substring(0,30)}${r.campaign.length>30?'…':''}</td>
@@ -1017,7 +1160,7 @@ function renderCampaignTables(data, selectedCamp) {
       <td><strong>€ ${fmt(r.commission)}</strong></td>
       <td>€ ${fmt(r.cost)}</td>
       <td>${r.conversions.toFixed(1)}</td>
-      <td>€ ${fmt(r.convValue)}</td>
+      <td style="color:${profitColor};font-weight:700">€ ${fmt(r.profit)}</td>
       <td><span style="color:${roasColor};font-weight:700">${r.roas > 0 ? r.roas.toFixed(2)+'x' : '—'}</span></td>
       <td>${r.nBookings > 0 && r.cost > 0 ? '€ '+fmt(r.cpr) : '—'}</td>
     </tr>`;
@@ -1201,16 +1344,17 @@ function renderMetaPerfTable() {
     return `<th class="sortable${active ? ' sort-active' : ''}" onclick="metaSort('${key}')">${label}<span class="sort-icon">${arrow}</span></th>`;
   }
   document.getElementById('metaPerfHead').innerHTML =
-    `<tr>${showCheckbox ? '<th style="width:36px"><input type="checkbox" class="meta-cb" id="metaCbAll" onchange="metaToggleAllFromCb(this.checked)"></th>' : '<th style="width:36px"></th>'}${sth('name',colLabel)}${hasParent ? sth('parent','Campanha') : ''}${sth('spend','Spend')}${sth('bookings','Reservas')}${sth('commission','Comissão')}${sth('roas','ROAS')}${sth('cpa','CPA')}${sth('clicks','Clicks')}${sth('cpc','CPC')}</tr>`;
+    `<tr>${showCheckbox ? '<th style="width:36px"><input type="checkbox" class="meta-cb" id="metaCbAll" onchange="metaToggleAllFromCb(this.checked)"></th>' : '<th style="width:36px"></th>'}${sth('name',colLabel)}${hasParent ? sth('parent','Campanha') : ''}${sth('spend','Spend')}${sth('bookings','Reservas')}${sth('commission','Comissão')}${sth('roas','ROAS')}${sth('cpa','CPA')}${sth('clicks','Clicks')}${sth('cpc','CPC')}${sth('ctr','CTR')}</tr>`;
 
   // Aggregate costs
   const spendAgg = {};
   scopedCost.forEach(r => {
     const id = r[costIdKey];
     if (!id) return;
-    if (!spendAgg[id]) spendAgg[id] = { name: r[costNameKey], parent: costParentName ? r[costParentName] : '', spend: 0, clicks: 0 };
+    if (!spendAgg[id]) spendAgg[id] = { name: r[costNameKey], parent: costParentName ? r[costParentName] : '', spend: 0, clicks: 0, impressions: 0 };
     spendAgg[id].spend += r._spend;
     spendAgg[id].clicks += r._clicks;
+    spendAgg[id].impressions += r._impressions || 0;
   });
 
   // Aggregate bookings
@@ -1238,7 +1382,8 @@ function renderMetaPerfTable() {
       commission: b.commission, bookedComm: b.bookedComm,
       roas: s.spend > 0 ? b.bookedComm / s.spend : 0,
       cpa: b.booked > 0 ? s.spend / b.booked : 0,
-      clicks: s.clicks, cpc: s.clicks > 0 ? s.spend / s.clicks : 0
+      clicks: s.clicks, cpc: s.clicks > 0 ? s.spend / s.clicks : 0,
+      ctr: s.impressions > 0 ? s.clicks / s.impressions * 100 : 0
     };
   }).sort((a,b) => {
     const col = _metaSortCol;
@@ -1262,6 +1407,7 @@ function renderMetaPerfTable() {
       <td>${r.booked > 0 ? '€ '+fmt(r.cpa) : '—'}</td>
       <td>${r.clicks}</td>
       <td>${r.clicks > 0 ? '€ '+fmt(r.cpc) : '—'}</td>
+      <td>${r.ctr > 0 ? r.ctr.toFixed(2)+'%' : '—'}</td>
     </tr>`;
   }).join('');
 
@@ -1389,6 +1535,59 @@ function kpi(cls, icon, label, value, sub) {
     <div class="kpi-value">${value}</div>
     <div class="kpi-sub">${sub}</div>
   </div>`;
+}
+
+// ─── MULTI-SELECT ────────────────────────────────────────────────
+const _msState = {
+  msCountry: { selected: new Set(), options: [], onChange: () => applyFilters() },
+  msBooker:  { selected: new Set(), options: [], onChange: () => applyFilters() },
+  msCamp:    { selected: new Set(), options: [], onChange: () => applyCampTabFilter() }
+};
+
+function msToggle(id) {
+  const dropdown = document.getElementById(id + 'Dropdown');
+  const isOpen = dropdown.classList.contains('open');
+  document.querySelectorAll('.ms-dropdown').forEach(d => d.classList.remove('open'));
+  if (!isOpen) dropdown.classList.add('open');
+}
+
+function msPopulate(id, options) {
+  const state = _msState[id];
+  if (!state) return;
+  state.options = options;
+  // Keep only valid selections
+  state.selected.forEach(v => { if (!options.includes(v)) state.selected.delete(v); });
+  const dropdown = document.getElementById(id + 'Dropdown');
+  if (!dropdown) return;
+  dropdown.innerHTML = options.map(o =>
+    `<label class="ms-item"><input type="checkbox" ${state.selected.has(o)?'checked':''} onchange="msToggleItem('${id}','${o.replace(/\\/g,'\\\\').replace(/'/g,"\\'")}',this.checked)"><span>${o}</span></label>`
+  ).join('') + `<div class="ms-clear" onclick="msClear('${id}')">Limpar seleção</div>`;
+  msUpdateBtn(id);
+}
+
+function msToggleItem(id, value, checked) {
+  const state = _msState[id];
+  if (!state) return;
+  if (checked) state.selected.add(value); else state.selected.delete(value);
+  msUpdateBtn(id);
+  state.onChange();
+}
+
+function msClear(id) {
+  const state = _msState[id];
+  if (!state) return;
+  state.selected.clear();
+  msPopulate(id, state.options);
+  state.onChange();
+}
+
+function msUpdateBtn(id) {
+  const state = _msState[id];
+  const btn = document.getElementById(id + 'Btn');
+  if (!btn || !state) return;
+  const n = state.selected.size;
+  btn.classList.toggle('has-selection', n > 0);
+  btn.innerHTML = (n === 0 ? 'Todos' : n + ' selecionado' + (n > 1 ? 's' : '')) + ' <span>▾</span>';
 }
 
 // ─── MATRIX ─────────────────────────────────────────────────────
@@ -1643,6 +1842,12 @@ function doLogout() {
 }
 
 // ─── INIT ────────────────────────────────────────────────────────
+document.addEventListener('click', e => {
+  if (!e.target.closest('.ms-wrap')) {
+    document.querySelectorAll('.ms-dropdown').forEach(d => d.classList.remove('open'));
+  }
+});
+
 if (sessionStorage.getItem('joso_auth') === '1') {
   document.getElementById('loginOverlay').style.display = 'none';
   document.getElementById('appWrapper').style.display = 'block';
