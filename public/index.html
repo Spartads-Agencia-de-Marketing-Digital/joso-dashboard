@@ -1118,7 +1118,8 @@ function renderCampaignTables(data, selectedCamps, activeBrand) {
   Object.entries(costByAg).forEach(([key, info]) => {
     if (!bookByAdGroup[key] && info.cost > 0) {
       const [campSlug, agSlug] = key.split('|||');
-      if (selectedCamp && campSlug !== selectedCamp) return;
+      if (selectedCamps) { if (!selectedCamps.includes(campSlug)) return; }
+      else if (activeBrand) { const bbh = activeBrand === 'bbh'; if (bbh ? !isBBH(campSlug) : isBBH(campSlug)) return; }
       bookByAdGroup[key] = { campSlug, agSlug, utmCampaign: campSlug, utmAdgroup: agSlug, rows: [] };
     }
   });
